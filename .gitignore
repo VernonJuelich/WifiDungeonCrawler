@@ -1,0 +1,8 @@
+node_modules/
+dungeon.db
+dungeon.db-shm
+dungeon.db-wal
+handshakes/*.cap
+handshakes/*.hc22000
+*.log
+.DS_Store

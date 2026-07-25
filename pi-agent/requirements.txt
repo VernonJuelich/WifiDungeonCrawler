@@ -1,0 +1,2 @@
+# No third-party deps — uses only Python stdlib
+# sqlite3, threading, urllib, json, os, glob, time are all built-in

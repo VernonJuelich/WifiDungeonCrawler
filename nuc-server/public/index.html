@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DUNGEON CRAWLER — WIFI EDITION</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="scanlines"></div>
+
+  <header>
+    <div class="header-left">
+      <div class="title-block">
+        <span class="system-tag">[ SYSTEM ]</span>
+        <h1>DUNGEON CRAWLER</h1>
+        <span class="subtitle">WIFI EDITION — BORANT CORP BROADCAST</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="crawler-hud">
+        <div class="stat-box" id="crawler-name-box" title="Click to rename">
+          <span class="stat-label">CRAWLER</span>
+          <span class="stat-value" id="crawler-name">Carl</span>
+          <input class="name-input hidden" id="crawler-name-input" maxlength="32" />
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">LEVEL</span>
+          <span class="stat-value" id="crawler-level">1</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">XP</span>
+          <span class="stat-value"><span id="crawler-xp">0</span> / <span id="crawler-xp-next">100</span></span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">KILLS</span>
+          <span class="stat-value" id="crawler-kills">0</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">FLOOR</span>
+          <span class="stat-value" id="crawler-floor">1</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div id="announcement-bar" class="hidden">
+    <span id="announcement-text"></span>
+  </div>
+
+  <main>
+    <div class="col col-left">
+      <!-- DUNGEON MAP -->
+      <section class="panel" id="dungeon-map">
+        <div class="panel-header">DUNGEON MAP <span class="blink">▮</span></div>
+        <div class="monster-grid" id="monster-grid">
+          <div class="empty-dungeon">No monsters detected. The dungeon is silent. That's worse.</div>
+        </div>
+      </section>
+
+      <!-- CRACK QUEUE -->
+      <section class="panel" id="crack-panel">
+        <div class="panel-header">CRACK PIPELINE</div>
+        <div id="crack-queue">
+          <div class="empty-state">Waiting for handshakes...</div>
+        </div>
+      </section>
+    </div>
+
+    <div class="col col-right">
+      <!-- SYSTEM FEED -->
+      <section class="panel" id="system-feed">
+        <div class="panel-header">SYSTEM BROADCAST <span class="live-dot"></span></div>
+        <div id="event-log">
+          <div class="event-entry system-boot">
+            <span class="event-time">--:--:--</span>
+            <span class="event-msg">SYSTEM ONLINE. The dungeon awaits. Try not to die. The audience loves it when you die.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- LOOT -->
+      <section class="panel" id="loot-panel">
+        <div class="panel-header">INVENTORY</div>
+        <div id="loot-list"><div class="empty-state">No loot yet. Get to work, crawler.</div></div>
+      </section>
+
+      <!-- ACHIEVEMENTS -->
+      <section class="panel" id="achievements-panel">
+        <div class="panel-header">ACHIEVEMENTS</div>
+        <div id="achievement-list"><div class="empty-state">No achievements. You haven't done anything impressive yet.</div></div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Achievement popup -->
+  <div id="achievement-popup" class="hidden">
+    <div class="popup-inner">
+      <div class="popup-tag">ACHIEVEMENT UNLOCKED</div>
+      <div id="popup-name"></div>
+      <div id="popup-desc"></div>
+    </div>
+  </div>
+
+  <!-- Loot popup -->
+  <div id="loot-popup" class="hidden">
+    <div class="popup-inner">
+      <div id="loot-popup-rarity" class="popup-tag"></div>
+      <div id="loot-popup-name"></div>
+      <div id="loot-popup-flavor"></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
