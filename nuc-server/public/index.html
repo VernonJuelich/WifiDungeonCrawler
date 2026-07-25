@@ -29,16 +29,19 @@
           <span class="stat-value" id="crawler-level">1</span>
         </div>
         <div class="stat-box">
-          <span class="stat-label">XP</span>
-          <span class="stat-value"><span id="crawler-xp">0</span> / <span id="crawler-xp-next">100</span></span>
-        </div>
-        <div class="stat-box">
           <span class="stat-label">KILLS</span>
           <span class="stat-value" id="crawler-kills">0</span>
         </div>
         <div class="stat-box">
           <span class="stat-label">FLOOR</span>
           <span class="stat-value" id="crawler-floor">1</span>
+        </div>
+      </div>
+      <div class="xp-row">
+        <span class="xp-label">XP</span>
+        <div class="xp-track">
+          <div class="xp-fill" id="xp-fill" style="width:0%"></div>
+          <span class="xp-track-label" id="xp-track-label">0 / 100</span>
         </div>
       </div>
     </div>
@@ -49,8 +52,18 @@
   </div>
 
   <main>
+    <!-- LEFT: Trophy Case -->
     <div class="col col-left">
-      <!-- DUNGEON MAP -->
+      <section class="panel fill-panel" id="achievements-panel">
+        <div class="panel-header">TROPHY CASE</div>
+        <div id="achievement-list">
+          <div class="empty-state">No achievements. You haven't done anything impressive yet.</div>
+        </div>
+      </section>
+    </div>
+
+    <!-- CENTER: Dungeon Map + Crack Pipeline -->
+    <div class="col col-center">
       <section class="panel" id="dungeon-map">
         <div class="panel-header">DUNGEON MAP <span class="blink">▮</span></div>
         <div class="monster-grid" id="monster-grid">
@@ -58,7 +71,6 @@
         </div>
       </section>
 
-      <!-- CRACK QUEUE -->
       <section class="panel" id="crack-panel">
         <div class="panel-header">CRACK PIPELINE</div>
         <div id="crack-queue">
@@ -67,28 +79,22 @@
       </section>
     </div>
 
+    <!-- RIGHT: System Feed + Loot -->
     <div class="col col-right">
-      <!-- SYSTEM FEED -->
       <section class="panel" id="system-feed">
         <div class="panel-header">SYSTEM BROADCAST <span class="live-dot"></span></div>
         <div id="event-log">
           <div class="event-entry system-boot">
+            <span class="event-icon">⚡</span>
             <span class="event-time">--:--:--</span>
             <span class="event-msg">SYSTEM ONLINE. The dungeon awaits. Try not to die. The audience loves it when you die.</span>
           </div>
         </div>
       </section>
 
-      <!-- LOOT -->
       <section class="panel" id="loot-panel">
         <div class="panel-header">INVENTORY</div>
         <div id="loot-list"><div class="empty-state">No loot yet. Get to work, crawler.</div></div>
-      </section>
-
-      <!-- ACHIEVEMENTS -->
-      <section class="panel" id="achievements-panel">
-        <div class="panel-header">ACHIEVEMENTS</div>
-        <div id="achievement-list"><div class="empty-state">No achievements. You haven't done anything impressive yet.</div></div>
       </section>
     </div>
   </main>

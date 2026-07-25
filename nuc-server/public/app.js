@@ -10,6 +10,17 @@ const MONSTER_EMOJI = {
   'Unknown Horror':    '❓',
 };
 
+const EVENT_ICONS = {
+  monster_spotted: '👁',
+  handshake:       '💥',
+  kill:            '☠',
+  loot:            '🎁',
+  achievement:     '🏆',
+  level_up:        '⬆',
+  crack_fail:      '✗',
+  'system-boot':   '⚡',
+};
+
 let state = { monsters: [], loot: [], achievements: [], events: [], crawler: {} };
 
 async function fetchState() {
@@ -26,14 +37,47 @@ function renderAll() {
   renderAchievements(state.achievements);
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function signalStrength(dbm) {
+  if (!dbm) return 0;
+  if (dbm >= -50) return 4;
+  if (dbm >= -65) return 3;
+  if (dbm >= -75) return 2;
+  return 1;
+}
+
+function signalBarsHtml(dbm) {
+  const s = signalStrength(dbm);
+  return `<div class="signal-bar-wrap signal-s${s}">
+    <span></span><span></span><span></span><span></span>
+  </div>`;
+}
+
+function relativeTime(isoStr) {
+  if (!isoStr) return '';
+  const delta = Date.now() - new Date(isoStr + 'Z').getTime();
+  if (delta < 60000) return 'now';
+  if (delta < 3600000) return `${Math.floor(delta / 60000)}m ago`;
+  return `${Math.floor(delta / 3600000)}h ago`;
+}
+
+function escHtml(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Renderers ─────────────────────────────────────────────────────────────────
 function renderCrawler(c) {
   if (!c) return;
   document.getElementById('crawler-name').textContent  = c.name || 'Carl';
   document.getElementById('crawler-level').textContent = c.level || 1;
-  document.getElementById('crawler-xp').textContent    = c.xp || 0;
-  document.getElementById('crawler-xp-next').textContent = c.xp_next || 100;
   document.getElementById('crawler-kills').textContent = c.kills || 0;
   document.getElementById('crawler-floor').textContent = c.floor || 1;
+
+  const xp = c.xp || 0;
+  const xpNext = c.xp_next || 100;
+  const pct = Math.min(100, (xp / xpNext) * 100).toFixed(1);
+  document.getElementById('xp-fill').style.width = pct + '%';
+  document.getElementById('xp-track-label').textContent = `${xp} / ${xpNext}`;
 }
 
 function groupMonsters(monsters) {
@@ -47,8 +91,8 @@ function groupMonsters(monsters) {
       const g = groups.get(key);
       g.bssids.push(m.bssid);
       g.count++;
-      if (m.signal > g.signal) g.signal = m.signal;
-      if (m.cr > g.cr) { g.cr = m.cr; g.monster_type = m.monster_type; }
+      if ((m.signal || -99) > (g.signal || -99)) g.signal = m.signal;
+      if ((m.cr || 0) > (g.cr || 0)) { g.cr = m.cr; g.monster_type = m.monster_type; }
       if ((statusRank[m.status] || 0) > (statusRank[g.status] || 0)) g.status = m.status;
     }
   }
@@ -62,31 +106,54 @@ function renderMonsters(monsters) {
     return;
   }
   const grouped = groupMonsters(monsters);
-  grid.innerHTML = grouped.map(m => `
-    <div class="monster-card ${m.status}" title="${m.bssids.join('\n')}">
-      <span class="monster-emoji">${MONSTER_EMOJI[m.monster_type] || '❓'}</span>
+  grid.innerHTML = grouped.map(m => {
+    const vendor  = m.vendor ? escHtml(m.vendor) : '';
+    const channel = m.channel ? `CH ${m.channel}` : '';
+    const clients = m.clients > 0 ? `${m.clients} client${m.clients !== 1 ? 's' : ''}` : '';
+    const ago     = relativeTime(m.last_seen);
+
+    return `
+    <div class="monster-card ${m.status || 'alive'}" title="${escHtml(m.bssids.join('\n'))}">
       ${m.count > 1 ? `<span class="monster-count">×${m.count}</span>` : ''}
-      <div class="monster-type">${m.monster_type}</div>
+      <span class="monster-emoji">${MONSTER_EMOJI[m.monster_type] || '❓'}</span>
+      <div class="monster-type">${escHtml(m.monster_type || 'Unknown')}</div>
       <div class="monster-name">${escHtml(m.ssid || '[Hidden]')}</div>
-      <div class="monster-stats">
-        <span class="monster-cr">CR ${m.cr}</span>
-        <span class="monster-sig">${m.signal} dBm</span>
+      <div class="monster-row">
+        <span class="monster-cr">CR ${m.cr ?? '?'}</span>
+        ${signalBarsHtml(m.signal)}
+        <span class="monster-enc">${escHtml((m.encryption || 'OPEN').toUpperCase())}</span>
       </div>
-      <div class="monster-enc">${m.encryption || 'OPEN'}</div>
-    </div>
-  `).join('');
+      ${(channel || clients) ? `
+      <div class="monster-row" style="margin-top:4px">
+        <span class="monster-ch">${channel}</span>
+        <span class="monster-ch">${clients}</span>
+      </div>` : ''}
+      ${(vendor || ago) ? `
+      <div class="monster-meta">
+        <span>${vendor}</span>
+        <span>${ago}</span>
+      </div>` : ''}
+    </div>`;
+  }).join('');
 }
 
 function renderEvents(events) {
   const log = document.getElementById('event-log');
   if (!events || !events.length) return;
+  const boot = `<div class="event-entry system-boot">
+    <span class="event-icon">⚡</span>
+    <span class="event-time">--:--:--</span>
+    <span class="event-msg">SYSTEM ONLINE. The dungeon awaits. Try not to die.</span>
+  </div>`;
   log.innerHTML = events.slice(0, 30).map(e => {
-    const time = new Date(e.created_at).toLocaleTimeString();
-    return `<div class="event-entry ${e.type}">
+    const time = new Date(e.created_at + 'Z').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const icon = EVENT_ICONS[e.type] || '·';
+    return `<div class="event-entry ${escHtml(e.type || '')}">
+      <span class="event-icon">${icon}</span>
       <span class="event-time">${time}</span>
-      <span class="event-msg">${escHtml(e.message)}</span>
+      <span class="event-msg">${escHtml(e.message || e.type)}</span>
     </div>`;
-  }).join('');
+  }).join('') + boot;
 }
 
 function renderLoot(loot) {
@@ -96,7 +163,8 @@ function renderLoot(loot) {
     return;
   }
   el.innerHTML = loot.slice(0, 20).map(l => `
-    <div class="loot-item ${l.rarity}">
+    <div class="loot-item ${escHtml(l.rarity || 'common')}">
+      <div class="loot-rarity">${escHtml(l.rarity || 'common')}</div>
       <div class="loot-name">${escHtml(l.item_name)}</div>
       <div class="loot-flavor">${escHtml(l.flavor_text)}</div>
     </div>
@@ -120,6 +188,7 @@ function renderAchievements(achievements) {
   `).join('');
 }
 
+// ── Popups ────────────────────────────────────────────────────────────────────
 function showAnnouncement(msg) {
   const bar = document.getElementById('announcement-bar');
   const txt = document.getElementById('announcement-text');
@@ -141,16 +210,12 @@ function showAchievementPopup(ach) {
 
 function showLootPopup(item) {
   const pop = document.getElementById('loot-popup');
-  document.getElementById('loot-popup-rarity').textContent = `${item.rarity.toUpperCase()} ITEM ACQUIRED`;
+  document.getElementById('loot-popup-rarity').textContent = `${(item.rarity || 'common').toUpperCase()} ITEM ACQUIRED`;
   document.getElementById('loot-popup-name').textContent = item.name || item.item_name;
   document.getElementById('loot-popup-flavor').textContent = item.flavor || item.flavor_text;
   pop.classList.remove('hidden');
   clearTimeout(pop._timer);
   pop._timer = setTimeout(() => pop.classList.add('hidden'), 5000);
-}
-
-function escHtml(str) {
-  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 // ── Live SSE ──────────────────────────────────────────────────────────────────
@@ -162,15 +227,15 @@ function connectSSE() {
 
     switch (data.type) {
       case 'monster_spotted':
-        state.monsters.unshift({ bssid: data.bssid, ssid: data.ssid, monster_type: data.monsterType, cr: data.cr, signal: data.signal, status: 'alive' });
+        state.monsters.unshift({ bssid: data.bssid, ssid: data.ssid, monster_type: data.monsterType, cr: data.cr, signal: data.signal, status: 'alive', encryption: data.encryption });
         renderMonsters(state.monsters);
-        showAnnouncement(data.message);
+        if (data.message) showAnnouncement(data.message);
         addEventEntry(data);
         break;
 
       case 'handshake':
         updateMonsterStatus(data.bssid, 'wounded');
-        showAnnouncement(data.message);
+        if (data.message) showAnnouncement(data.message);
         addEventEntry(data);
         addCrackItem(data.bssid, data.ssid, 'running');
         break;
@@ -179,7 +244,7 @@ function connectSSE() {
         updateMonsterStatus(data.bssid, 'dead');
         document.getElementById('crawler-kills').textContent =
           parseInt(document.getElementById('crawler-kills').textContent || 0) + 1;
-        showAnnouncement(data.message);
+        if (data.message) showAnnouncement(data.message);
         addEventEntry(data);
         break;
 
@@ -192,7 +257,9 @@ function connectSSE() {
 
       case 'achievement':
         if (data.achievement) {
-          state.achievements.unshift(data.achievement);
+          const existing = state.achievements.find(a => a.code === data.achievement.code);
+          if (existing) { existing.count = data.achievement.count; }
+          else { state.achievements.unshift(data.achievement); }
           renderAchievements(state.achievements);
           showAchievementPopup(data.achievement);
         }
@@ -201,7 +268,7 @@ function connectSSE() {
 
       case 'level_up':
         document.getElementById('crawler-level').textContent = data.level;
-        showAnnouncement(data.message);
+        if (data.message) showAnnouncement(data.message);
         addEventEntry(data);
         break;
 
@@ -217,9 +284,10 @@ function connectSSE() {
 function addEventEntry(data) {
   const log = document.getElementById('event-log');
   const div = document.createElement('div');
-  div.className = `event-entry ${data.type}`;
-  const time = new Date().toLocaleTimeString();
-  div.innerHTML = `<span class="event-time">${time}</span><span class="event-msg">${escHtml(data.message)}</span>`;
+  div.className = `event-entry ${data.type || ''}`;
+  const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const icon = EVENT_ICONS[data.type] || '·';
+  div.innerHTML = `<span class="event-icon">${icon}</span><span class="event-time">${time}</span><span class="event-msg">${escHtml(data.message || data.type)}</span>`;
   log.insertBefore(div, log.firstChild);
   while (log.children.length > 50) log.removeChild(log.lastChild);
 }
@@ -236,7 +304,7 @@ function addCrackItem(bssid, ssid, status) {
   if (empty) empty.remove();
   const div = document.createElement('div');
   div.className = `crack-item crack-${status}`;
-  div.id = `crack-${bssid}`;
+  div.id = `crack-${bssid.replace(/:/g,'')}`;
   div.textContent = `${ssid || bssid} — cracking...`;
   queue.insertBefore(div, queue.firstChild);
 }
