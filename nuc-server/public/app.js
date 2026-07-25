@@ -1,13 +1,13 @@
-const MONSTER_EMOJI = {
-  'Naked Slime':       '🟢',
-  'Armored Goblin':    '👺',
-  'Cave Troll':        '👹',
-  'Dungeon Wyvern':    '🐉',
-  'Dungeon Drake':     '🦎',
-  'The Lich':          '💀',
-  'Common Peasant':    '👤',
-  'Invisible Stalker': '👁',
-  'Unknown Horror':    '❓',
+const MONSTER_ICON = {
+  'Naked Slime':       '/icons/slime.svg',
+  'Armored Goblin':    '/icons/goblin.svg',
+  'Cave Troll':        '/icons/troll.svg',
+  'Dungeon Wyvern':    '/icons/wyvern.svg',
+  'Dungeon Drake':     '/icons/drake.svg',
+  'The Lich':          '/icons/lich.svg',
+  'Common Peasant':    '/icons/peasant.svg',
+  'Invisible Stalker': '/icons/stalker.svg',
+  'Unknown Horror':    '/icons/horror.svg',
 };
 
 const EVENT_ICONS = {
@@ -115,7 +115,12 @@ function renderMonsters(monsters) {
     return `
     <div class="monster-card ${m.status || 'alive'}" title="${escHtml(m.bssids.join('\n'))}">
       ${m.count > 1 ? `<span class="monster-count">×${m.count}</span>` : ''}
-      <span class="monster-emoji">${MONSTER_EMOJI[m.monster_type] || '❓'}</span>
+      <div class="monster-icon-wrap">
+        <img class="monster-icon monster-icon-${(m.monster_type||'').toLowerCase().replace(/\s+/g,'-')}"
+          src="${MONSTER_ICON[m.monster_type] || '/icons/horror.svg'}"
+          alt="${escHtml(m.monster_type)}"
+          onerror="this.style.display='none'">
+      </div>
       <div class="monster-type">${escHtml(m.monster_type || 'Unknown')}</div>
       <div class="monster-name">${escHtml(m.ssid || '[Hidden]')}</div>
       <div class="monster-row">

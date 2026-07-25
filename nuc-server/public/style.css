@@ -224,6 +224,30 @@ main {
 }
 .monster-card.wounded { animation: wounded-pulse 1.8s ease-in-out infinite; }
 
+.monster-icon-wrap {
+  display: flex; justify-content: center; align-items: center;
+  height: 56px; margin-bottom: 6px;
+}
+
+.monster-icon {
+  width: 52px; height: 52px;
+  filter: invert(1) brightness(0.85);
+  transition: filter 0.2s;
+}
+
+/* Per-type colour tints using hue-rotate + saturate */
+.monster-icon-naked-slime       { filter: invert(1) sepia(1) saturate(4) hue-rotate(90deg);  }
+.monster-icon-armored-goblin    { filter: invert(1) sepia(1) saturate(3) hue-rotate(300deg); }
+.monster-icon-cave-troll        { filter: invert(1) sepia(1) saturate(2) hue-rotate(30deg);  }
+.monster-icon-dungeon-wyvern    { filter: invert(1) sepia(1) saturate(5) hue-rotate(250deg); }
+.monster-icon-dungeon-drake     { filter: invert(1) sepia(1) saturate(4) hue-rotate(240deg); }
+.monster-icon-the-lich          { filter: invert(1) sepia(1) saturate(5) hue-rotate(40deg);  }
+.monster-icon-common-peasant    { filter: invert(1) brightness(0.6); }
+.monster-icon-invisible-stalker { filter: invert(1) brightness(0.5) drop-shadow(0 0 4px #c8b8e8); }
+.monster-icon-unknown-horror    { filter: invert(1) sepia(1) saturate(5) hue-rotate(320deg); }
+
+.monster-card:hover .monster-icon { filter: invert(1) brightness(1.1); }
+
 .monster-count {
   position: absolute; top: 5px; right: 7px;
   font-size: 9px; color: var(--gold); font-weight: bold;
@@ -231,7 +255,6 @@ main {
   border-radius: 3px; padding: 1px 5px;
 }
 
-.monster-emoji { font-size: 32px; display: block; text-align: center; margin-bottom: 6px; }
 .monster-type  { font-size: 9px; color: var(--accent2); letter-spacing: 1px; text-align: center; text-transform: uppercase; }
 .monster-name  {
   font-size: 12px; color: var(--text); text-align: center;
