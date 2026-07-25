@@ -4,7 +4,7 @@ module.exports = {
     script: 'server.js',
     cwd: __dirname,
     watch: false,
-    env: { NODE_ENV: 'production', PORT: 9310 },
+    env: { NODE_ENV: 'production', PORT: 9310, WPA_SEC_KEY: '84ab503fed3082a727fe8fadd5a72836' },
     error_file: 'C:\\AI-Lab\\Logs\\dungeon-crawler-err.log',
     out_file:   'C:\\AI-Lab\\Logs\\dungeon-crawler-out.log',
     log_date_format: 'YYYY-MM-DD HH:mm:ss',
