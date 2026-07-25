@@ -2,7 +2,7 @@ const db = require('./db');
 
 const MONSTER_TABLE = [
   { type: 'Naked Slime',       enc: ['open'],        crMin: 0,  crMax: 0,  xp: 10,    sigBonus: false },
-  { type: 'Armored Goblin',    enc: ['wep'],          crMin: 1,  crMax: 2,  xp: 50,    sigBonus: true  },
+  { type: 'Armoured Goblin',    enc: ['wep'],          crMin: 1,  crMax: 2,  xp: 50,    sigBonus: true  },
   { type: 'Cave Troll',        enc: ['wpa'],          crMin: 3,  crMax: 4,  xp: 200,   sigBonus: true  },
   { type: 'Dungeon Wyvern',    enc: ['wpa2'],         crMin: 5,  crMax: 8,  xp: 1100,  sigBonus: true  },
   { type: 'The Lich',          enc: ['wpa3'],         crMin: 15, crMax: 21, xp: 13000, sigBonus: true  },
@@ -89,7 +89,7 @@ function classifyMonster(network) {
   }
 
   if (enc.includes('wep')) {
-    return { type: 'Armored Goblin', cr: 2, xp: 50 };
+    return { type: 'Armoured Goblin', cr: 2, xp: 50 };
   }
 
   return { type: 'Unknown Horror', cr: 5, xp: 500 };

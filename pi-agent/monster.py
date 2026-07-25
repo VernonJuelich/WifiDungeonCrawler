@@ -36,6 +36,6 @@ def classify(network: dict) -> dict:
         return {"type": "Cave Troll", "cr": 4 if signal > -60 else 3, "xp": 200}
 
     if "wep" in enc:
-        return {"type": "Armored Goblin", "cr": 2, "xp": 50}
+        return {"type": "Armoured Goblin", "cr": 2, "xp": 50}
 
     return {"type": "Unknown Horror", "cr": 5, "xp": 500}

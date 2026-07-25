@@ -1,6 +1,6 @@
 const MONSTER_ICON = {
   'Naked Slime':       '/icons/slime.svg',
-  'Armored Goblin':    '/icons/goblin.svg',
+  'Armoured Goblin':    '/icons/goblin.svg',
   'Cave Troll':        '/icons/troll.svg',
   'Dungeon Wyvern':    '/icons/wyvern.svg',
   'Dungeon Drake':     '/icons/drake.svg',
