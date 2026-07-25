@@ -248,6 +248,17 @@ main {
 
 .monster-card:hover .monster-icon { filter: invert(1) brightness(1.1); }
 
+.ai-score {
+  position: absolute; top: 5px; left: 7px;
+  font-size: 9px; font-weight: bold;
+  border-radius: 3px; padding: 1px 5px;
+  border: 1px solid;
+}
+.ai-score-high { color: var(--green);   border-color: var(--green);   background: rgba(0,255,136,0.1); }
+.ai-score-mid  { color: var(--gold);    border-color: var(--gold);    background: rgba(255,215,0,0.1); }
+.ai-score-low  { color: var(--accent2); border-color: var(--accent2); background: rgba(255,47,123,0.1); }
+.ai-score-zero { color: var(--text-dim);border-color: var(--text-dim);background: transparent; }
+
 .monster-count {
   position: absolute; top: 5px; right: 7px;
   font-size: 9px; color: var(--gold); font-weight: bold;

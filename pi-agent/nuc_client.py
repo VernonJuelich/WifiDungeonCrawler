@@ -23,6 +23,10 @@ def _post(path: str, data: dict = None, raw_body: bytes = None, headers: dict = 
         print(f"[NUC] {path} failed: {e}")
         return None
 
+def post_json(path: str, data: dict, timeout: int = 10) -> dict | None:
+    """Generic JSON POST — used by AI targeting."""
+    return _post(path, data)
+
 def report_network(network: dict) -> dict | None:
     return _post("/api/network", network)
 

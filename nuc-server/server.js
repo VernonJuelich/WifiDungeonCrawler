@@ -5,6 +5,7 @@ const db = require('./db');
 const { classifyMonster, rollLoot, addXP, checkAchievements, logEvent, getCrawlerState } = require('./game-engine');
 const { narrate } = require('./narrator');
 const crackPipeline = require('./crack-pipeline');
+const { scoreTargets, getModelStats } = require('./ai-targeting');
 
 const app = express();
 const PORT = 9310;
@@ -117,12 +118,18 @@ app.post('/api/event', async (req, res) => {
 
 // ── Dashboard API ───────────────────────────────────────────────────────────────
 app.get('/api/state', (req, res) => {
-  const crawler   = getCrawlerState();
-  const monsters  = db.prepare('SELECT * FROM monsters ORDER BY last_seen DESC LIMIT 50').all();
-  const loot      = db.prepare('SELECT * FROM loot ORDER BY acquired_at DESC LIMIT 20').all();
+  const crawler      = getCrawlerState();
+  const monsters     = db.prepare('SELECT * FROM monsters ORDER BY last_seen DESC LIMIT 50').all();
+  const loot         = db.prepare('SELECT * FROM loot ORDER BY acquired_at DESC LIMIT 20').all();
   const achievements = db.prepare('SELECT * FROM achievements ORDER BY unlocked_at DESC').all();
-  const events    = db.prepare('SELECT * FROM events ORDER BY created_at DESC LIMIT 30').all();
-  res.json({ crawler, monsters, loot, achievements, events });
+  const events       = db.prepare('SELECT * FROM events ORDER BY created_at DESC LIMIT 30').all();
+
+  // Attach AI scores to each monster for dashboard display
+  const scored   = scoreTargets(monsters);
+  const scoreMap = Object.fromEntries(scored.map(s => [s.bssid, s.ai_score]));
+  const monstersWithAI = monsters.map(m => ({ ...m, ai_score: scoreMap[m.bssid] ?? null }));
+
+  res.json({ crawler, monsters: monstersWithAI, loot, achievements, events });
 });
 
 app.post('/api/crawler/name', (req, res) => {
@@ -131,6 +138,19 @@ app.post('/api/crawler/name', (req, res) => {
   const clean = name.trim().slice(0, 32);
   db.prepare('UPDATE crawler SET name=? WHERE id=1').run(clean);
   res.json({ name: clean });
+});
+
+// ── AI Targeting ────────────────────────────────────────────────────────────
+// Pi POSTs its candidate networks; NUC returns them AI-scored and ranked
+app.post('/api/targeting', (req, res) => {
+  const { candidates } = req.body;
+  if (!Array.isArray(candidates) || !candidates.length)
+    return res.status(400).json({ error: 'candidates array required' });
+  res.json({ targets: scoreTargets(candidates), model: 'bayesian-contextual-v1' });
+});
+
+app.get('/api/targeting/stats', (req, res) => {
+  res.json(getModelStats());
 });
 
 app.get('/api/leaderboard', (req, res) => {

@@ -61,6 +61,13 @@ function relativeTime(isoStr) {
   return `${Math.floor(delta / 3600000)}h ago`;
 }
 
+function aiTier(score) {
+  if (score >= 60) return 'high';
+  if (score >= 30) return 'mid';
+  if (score > 0)  return 'low';
+  return 'zero';
+}
+
 function escHtml(str) {
   return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
@@ -94,6 +101,7 @@ function groupMonsters(monsters) {
       if ((m.signal || -99) > (g.signal || -99)) g.signal = m.signal;
       if ((m.cr || 0) > (g.cr || 0)) { g.cr = m.cr; g.monster_type = m.monster_type; }
       if ((statusRank[m.status] || 0) > (statusRank[g.status] || 0)) g.status = m.status;
+      if ((m.ai_score || 0) > (g.ai_score || 0)) g.ai_score = m.ai_score;
     }
   }
   return Array.from(groups.values());
@@ -114,6 +122,7 @@ function renderMonsters(monsters) {
 
     return `
     <div class="monster-card ${m.status || 'alive'}" title="${escHtml(m.bssids.join('\n'))}">
+      ${m.ai_score != null ? `<span class="ai-score ai-score-${aiTier(m.ai_score)}" title="AI crack probability">${m.ai_score}%</span>` : ''}
       ${m.count > 1 ? `<span class="monster-count">×${m.count}</span>` : ''}
       <div class="monster-icon-wrap">
         <img class="monster-icon monster-icon-${(m.monster_type||'').toLowerCase().replace(/\s+/g,'-')}"
