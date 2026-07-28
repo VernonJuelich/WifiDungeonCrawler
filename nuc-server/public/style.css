@@ -741,7 +741,40 @@ main {
   border-color: #7b241c;
   box-shadow: 0 5px 14px rgba(75,43,30,.18);
 }
-.monster-card.dead { opacity: .62; }
+.monster-card.dead {
+  opacity: 1;
+  background: #eee8da;
+  border-color: #9d927c;
+  filter: none;
+}
+.monster-card.dead::after {
+  content: "SLAIN";
+  top: 8px;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #7b241c;
+  color: #fff;
+  font: 800 9px/1.2 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: .6px;
+  opacity: 1;
+}
+.monster-icon,
+.monster-card:hover .monster-icon,
+.monster-icon-naked-slime,
+.monster-icon-armored-goblin,
+.monster-icon-cave-troll,
+.monster-icon-dungeon-wyvern,
+.monster-icon-dungeon-drake,
+.monster-icon-the-lich,
+.monster-icon-common-peasant,
+.monster-icon-invisible-stalker,
+.monster-icon-unknown-horror {
+  filter: grayscale(1) contrast(1.35) brightness(.42) !important;
+  opacity: .96;
+}
 .monster-name { color: #211f1a; font-size: 14px; font-weight: 800; }
 .monster-type { color: #7b241c; font-size: 10px; font-weight: 800; }
 .monster-cr { color: #6d4b0d; font-weight: 800; }
