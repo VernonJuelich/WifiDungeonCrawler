@@ -220,7 +220,7 @@ def _render(state):
     quest_required = int(quest.get("required") or 0)
     draw.text((3, 151), _fit(name.upper(), bold, 60, True), font=bold, fill=0)
     draw.text((65, 152), f"QUEST {quest_progress}/{quest_required}", font=tiny, fill=0)
-    draw.text((3, 161), _fit(f"MOOD: {mood.upper()}", tiny, W - 10, True), font=tiny, fill=0)
+    draw.text((3, 163), _fit(f"MOOD: {mood.upper()}", tiny, W - 10, True), font=tiny, fill=0)
     draw.text((3, 171), "HP", font=tiny, fill=0)
     draw.rectangle((19, 172, 57, 177), outline=0)
     draw.rectangle((20, 173, 20 + int(36 * health / max_health), 176), fill=0)
