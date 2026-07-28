@@ -449,7 +449,7 @@ def _render_page(state, page):
         inv_text = f"BAG {inventory.get('count', len(loot))}/{inventory.get('capacity', crawler.get('inventory_capacity', 10))}"
         gold_text = f"GOLD {crawler.get('gold', 0)}"
         draw.text((4, 115), inv_text, font=body, fill=0)
-        draw.text((W - body.getlength(gold_text) - 4, 115), gold_text, font=body, fill=0)
+        draw.text((64, 115), _fit(gold_text, body, W - 68, True), font=body, fill=0)
 
         weapon = next((item for item in loot if item.get("equipped") and item.get("power", 0)), None)
         armor = next((item for item in loot if item.get("equipped") and item.get("defense", 0)), None)
@@ -474,12 +474,32 @@ def _render_page(state, page):
         recap = (state.get("weeklyRecap") or {}).get("message") or "The accountants are still counting."
         regions = state.get("regions") or []
         bosses = state.get("bosses") or []
-        rows = [
-            f"KILLS {crawler.get('kills',0)}  FLOOR {crawler.get('floor',1)}",
-            f"ROOMS {len(state.get('monsters') or [])}  REGIONS {len(regions)}",
-            f"BOSSES {len(bosses)}  QUESTS {crawler.get('quests_completed',0)}",
-            "", recap,
-        ]
+        name = str(crawler.get("name") or "Carl").upper()
+        level_text = f"LV {crawler.get('level',1)}"
+        draw.text((4, 25), _fit(name, bold, 76, True), font=bold, fill=0)
+        draw.text((W - body.getlength(level_text) - 4, 27), level_text, font=body, fill=0)
+        draw.text((4, 43), f"KILLS {crawler.get('kills',0)}", font=body, fill=0)
+        draw.text((64, 43), f"FLOOR {crawler.get('floor',1)}", font=body, fill=0)
+        draw.text((4, 58), f"ROOMS {len(state.get('monsters') or [])}", font=tiny, fill=0)
+        draw.text((64, 58), f"REGIONS {len(regions)}", font=tiny, fill=0)
+        draw.text((4, 70), f"BOSSES {len(bosses)}", font=tiny, fill=0)
+        draw.text((64, 70), f"QUESTS {crawler.get('quests_completed',0)}", font=tiny, fill=0)
+
+        draw.line((3, 85, W - 4, 85), fill=0)
+        draw.text((4, 91), "WEEKLY RECAP", font=bold, fill=0)
+        y = 106
+        for line in _wrap(recap, tiny, W - 10, 9):
+            draw.text((4, y), line, font=tiny, fill=0)
+            y += 10
+
+        draw.line((3, 199, W - 4, 199), fill=0)
+        draw.text((4, 205), f"GOLD {crawler.get('gold',0)}", font=tiny, fill=0)
+        draw.text((64, 205), f"PRESTIGE {crawler.get('prestige',0)}", font=tiny, fill=0)
+        region_name = regions[0].get("name") if regions else "No region mapped"
+        draw.text((4, 219), _fit(region_name, tiny, W - 8, True), font=tiny, fill=0)
+        mood = str(crawler.get("mood") or "curious").upper()
+        draw.text((4, 232), _fit(f"MOOD: {mood}", tiny, W - 8, True), font=tiny, fill=0)
+        return image
 
     y = 116 if page in ("character", "donut") else 28
     for text in rows:
