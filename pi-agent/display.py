@@ -181,7 +181,6 @@ def _render(state):
     _paste_center(image, portrait, 74)
 
     # Decorative divider inspired by Ragnar's frise strip.
-    draw.line((1, 160, W - 2, 160), fill=0)
     for x in range(4, W - 4, 8):
         draw.line((x, 163, x + 3, 166), fill=0)
         draw.line((x + 3, 166, x + 6, 163), fill=0)
@@ -205,10 +204,6 @@ def _render(state):
     draw.text((62, 194), "ST", font=tiny, fill=0)
     draw.rectangle((78, 195, W - 4, 200), outline=0)
     draw.rectangle((79, 196, 79 + int((W - 84) * stamina / max_stamina), 199), fill=0)
-    draw.text((3, 202), f"{health}/{max_health}", font=tiny, fill=0)
-    stamina_text = f"{stamina}/{max_stamina}"
-    draw.text((W - tiny.getlength(stamina_text) - 4, 202), stamina_text, font=tiny, fill=0)
-
     message = ""
     for event in events:
         if event.get("message"):
@@ -217,7 +212,7 @@ def _render(state):
     if not message:
         message = QUIPS[_quip_index % len(QUIPS)]
         _quip_index += 1
-    y = 211
+    y = 204
     for line in _wrap(message, tiny, W - 8, 3):
         draw.text((4, y), line, font=tiny, fill=0)
         y += 10
