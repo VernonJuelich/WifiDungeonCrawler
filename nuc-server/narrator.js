@@ -42,13 +42,47 @@ async function generateNarration(prompt) {
   });
 }
 
+function pick(options) {
+  return options[Math.floor(Math.random() * options.length)];
+}
+
 const FALLBACKS = {
-  monster_spotted: context => `ANNOUNCER: A ${context.monsterType} appeared. Try not to embarrass yourself immediately.`,
-  encounter: context => `ANNOUNCER: You attacked a ${context.monsterType}. Confidence is adorable when unsupported by evidence.`,
-  victory: context => `ANNOUNCER: The ${context.monsterType} is dead. Even statistical accidents count, apparently.`,
-  loot: context => `ANNOUNCER: ${String(context.rarity).toUpperCase()} loot: "${context.itemName}." Finally, equipment worthy of someone else.`,
-  level_up: context => `ANNOUNCER: LEVEL ${context.level}. Numbers go up; competence remains under review.`,
-  achievement: context => `ANNOUNCER: ACHIEVEMENT UNLOCKED — "${context.achievementName}." Standards have clearly collapsed.`,
+  monster_spotted: context => pick([
+    `ANNOUNCER: A ${context.monsterType} appeared. Try not to embarrass yourself immediately.`,
+    `ANNOUNCER: Incoming ${context.monsterType}. It has signal strength; Carl has optimism.`,
+    `ANNOUNCER: A wild ${context.monsterType} has entered range and already regrets the neighbourhood.`,
+    `ANNOUNCER: ${context.monsterType} detected. The audience has lowered its expectations as a precaution.`,
+  ]),
+  encounter: context => pick([
+    `ANNOUNCER: You attacked a ${context.monsterType}. Confidence is adorable when unsupported by evidence.`,
+    `ANNOUNCER: Combat begins. The ${context.monsterType} was not consulted, which makes two of you.`,
+    `ANNOUNCER: Carl engages a ${context.monsterType}. Strategy remains listed as optional.`,
+    `ANNOUNCER: Weapons ready. Judgment questionable. Ratings promising.`,
+  ]),
+  victory: context => pick([
+    `ANNOUNCER: The ${context.monsterType} is dead. Even statistical accidents count, apparently.`,
+    `ANNOUNCER: Victory! Please remain calm while we verify this was actually Carl.`,
+    `ANNOUNCER: The ${context.monsterType} has fallen. Competence briefly visited and left no forwarding address.`,
+    `ANNOUNCER: Carl won. Donut would like the record to show she supervised.`,
+  ]),
+  loot: context => pick([
+    `ANNOUNCER: ${String(context.rarity).toUpperCase()} loot: "${context.itemName}." Finally, equipment worthy of someone else.`,
+    `ANNOUNCER: "${context.itemName}" acquired. Taste was never part of the loot table.`,
+    `ANNOUNCER: ${String(context.rarity).toUpperCase()} drop secured. Inventory dignity reduced accordingly.`,
+    `ANNOUNCER: New loot! Donut has claimed appraisal rights and plausible deniability.`,
+  ]),
+  level_up: context => pick([
+    `ANNOUNCER: LEVEL ${context.level}. Numbers go up; competence remains under review.`,
+    `ANNOUNCER: Level ${context.level}! Carl is now statistically harder to replace.`,
+    `ANNOUNCER: LEVEL UP. The dungeon has increased difficulty to compensate for this clerical error.`,
+    `ANNOUNCER: Level ${context.level} achieved. Donut remains the senior party member emotionally.`,
+  ]),
+  achievement: context => pick([
+    `ANNOUNCER: ACHIEVEMENT UNLOCKED — "${context.achievementName}." Standards have clearly collapsed.`,
+    `ANNOUNCER: "${context.achievementName}" awarded. Participation trophies have become dangerously specific.`,
+    `ANNOUNCER: Achievement unlocked. The committee denies having approved it.`,
+    `ANNOUNCER: "${context.achievementName}." Frame it quickly before anyone audits the criteria.`,
+  ]),
 };
 
 async function narrate(event, context = {}) {

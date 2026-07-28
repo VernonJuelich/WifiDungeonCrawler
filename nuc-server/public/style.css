@@ -885,10 +885,6 @@ main {
   padding: 0;
 }
 
-.display-page-buttons button:last-child {
-  grid-column: span 2;
-}
-
 #game-controls .refresh-display-button {
   width: 100%;
   margin-top: 8px;
@@ -967,7 +963,6 @@ main {
   .monster-icon { width: 82px; height: 82px; }
   #game-controls { grid-template-columns: 1fr; }
   .display-page-buttons { grid-column: 1; grid-template-columns: repeat(2, 1fr); }
-  .display-page-buttons button:last-child { grid-column: auto; }
   .control-action-grid, .control-settings-grid { grid-template-columns: 1fr; }
   #game-controls select, #game-controls button { font-size: 13px; }
 }

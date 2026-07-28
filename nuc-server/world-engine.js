@@ -179,6 +179,31 @@ function weeklyRecap() {
   return db.prepare('SELECT * FROM weekly_recaps WHERE week_key=?').get(key);
 }
 
+function recentRecap() {
+  const since = new Date(Date.now() - 24 * 3600000).toISOString().replace('T', ' ').slice(0, 19);
+  const stats = db.prepare(`SELECT
+    SUM(type='victory') victories,
+    SUM(type='defeat') defeats,
+    SUM(type='loot') loot,
+    SUM(type='town') towns,
+    SUM(type='level_up') levels,
+    SUM(type IN ('monster_spotted','region')) discoveries
+    FROM events WHERE created_at>=?`).get(since);
+  const result = Object.fromEntries(
+    Object.entries(stats).map(([key, value]) => [key, Number(value || 0)])
+  );
+  if (result.victories === 0) {
+    result.message = 'No victories today. A bold strategy, assuming the strategy was administrative avoidance.';
+  } else if (result.defeats > result.victories) {
+    result.message = `${result.victories} wins and ${result.defeats} humiliations. The audience calls this character development.`;
+  } else if (result.loot > result.victories * 2) {
+    result.message = `${result.victories} victories produced ${result.loot} loot drops. Carl has mistaken hoarding for a build strategy.`;
+  } else {
+    result.message = `${result.victories} victories, ${result.defeats} humiliations, and standards remain technically above ground.`;
+  }
+  return result;
+}
+
 function prestige() {
   const c = db.prepare('SELECT * FROM crawler WHERE id=1').get();
   if (c.floor < 10 && c.level < 20) return { error: 'Reach floor 10 or level 20 first.' };
@@ -203,7 +228,7 @@ function setControl(action, value) {
     db.prepare('UPDATE crawler SET difficulty=? WHERE id=1').run(value);
   }
   if (action === 'display_page') {
-    if (!['auto', 'battle', 'character', 'quest', 'donut', 'loot', 'summary'].includes(value)) return { error: 'Invalid display page.' };
+    if (!['auto', 'battle', 'character', 'quest', 'donut', 'loot', 'summary', 'recap'].includes(value)) return { error: 'Invalid display page.' };
     db.prepare('UPDATE crawler SET display_page=? WHERE id=1').run(value);
   }
   if (action === 'equipment_priority') {
@@ -225,10 +250,11 @@ function state() {
     nemeses: monsters.filter(m => m.nemesis).slice(0, 5),
     bosses: monsters.filter(m => m.is_boss).slice(0, 5),
     weeklyRecap: weeklyRecap(),
+    recentRecap: recentRecap(),
   };
 }
 
 module.exports = {
   ensureDailyQuests, advanceDaily, regionFor, recordNetwork, onBattle, onVictory,
-  onDefeat, townTheft, evaluateAchievements, weeklyRecap, prestige, setControl, state,
+  onDefeat, townTheft, evaluateAchievements, weeklyRecap, recentRecap, prestige, setControl, state,
 };

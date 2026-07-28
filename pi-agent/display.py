@@ -23,11 +23,14 @@ DONUT_ROOT = "/home/bjorn/dungeon/assets/donut"
 LOOT_ROOT = "/home/bjorn/dungeon/assets/loot"
 
 QUIPS = [
-    "The audience demands battle.",
-    "Stay in range, crawler.",
-    "Every signal hides a monster.",
-    "Loot awaits the persistent.",
-    "The dungeon is always watching.",
+    "The audience demands battle. Apparently standards were not included.",
+    "Stay in range, crawler. Running away was already focus-tested.",
+    "Every signal hides a monster. Most have better uptime than Carl.",
+    "Loot awaits the persistent. Dignity remains unavailable.",
+    "The dungeon is always watching. It has filed several complaints.",
+    "Standing still is not tactics, but the boss attack disagrees.",
+    "Donut has reviewed the plan. There will be no appeal.",
+    "Competence detected. Recalibrating sensors.",
 ]
 _quip_index = 0
 
@@ -484,6 +487,38 @@ def _render_page(state, page):
             draw.text((4, 202), "INVENTORY EMPTY", font=bold, fill=0)
             draw.text((4, 218), "Donut blames Carl.", font=body, fill=0)
         return image
+    elif page == "recap":
+        recap = state.get("recentRecap") or {}
+        events = state.get("events") or []
+        draw.text((4, 25), "LAST 24 HOURS", font=bold, fill=0)
+        draw.text((4, 43), f"WINS {recap.get('victories',0)}", font=body, fill=0)
+        draw.text((64, 43), f"LOSSES {recap.get('defeats',0)}", font=body, fill=0)
+        draw.text((4, 58), f"LOOT {recap.get('loot',0)}", font=body, fill=0)
+        draw.text((64, 58), f"TOWN {recap.get('towns',0)}", font=body, fill=0)
+        draw.text((4, 73), f"LEVELS {recap.get('levels',0)}", font=tiny, fill=0)
+        draw.text((64, 73), f"FOUND {recap.get('discoveries',0)}", font=tiny, fill=0)
+        draw.line((3, 87, W - 4, 87), fill=0)
+        draw.text((4, 93), "ANNOUNCER VERDICT", font=bold, fill=0)
+        y = 108
+        verdict = recap.get("message") or "The accountants found nothing worth exaggerating."
+        for line in _wrap(verdict, tiny, W - 16, 5):
+            draw.text((4, y), line, font=tiny, fill=0)
+            y += 10
+        draw.line((3, 162, W - 4, 162), fill=0)
+        draw.text((4, 168), "RECENT SHAME", font=bold, fill=0)
+        y = 184
+        recent = [event for event in events if event.get("message")][:4]
+        if not recent:
+            recent = [{"message": "Nothing happened. Somehow this is still Carl's fault."}]
+        for event in recent:
+            text = str(event.get("message") or "")
+            for prefix in ("THE SYSTEM:", "SYSTEM:", "ANNOUNCER:"):
+                if text.upper().startswith(prefix):
+                    text = text[len(prefix):].strip()
+                    break
+            draw.text((4, y), _fit(f"> {text}", tiny, W - 14, True), font=tiny, fill=0)
+            y += 13
+        return image
     else:
         recap = (state.get("weeklyRecap") or {}).get("message") or "The accountants are still counting."
         regions = state.get("regions") or []
@@ -535,7 +570,7 @@ def _render(state):
     if requested == "auto":
         if engaged:
             return _render_battle(state)
-        pages = ("battle", "character", "quest", "donut", "loot", "summary")
+        pages = ("battle", "character", "quest", "donut", "loot", "recap", "summary")
         requested = pages[int(time.time() // PAGE_ROTATE_SEC) % len(pages)]
     return _render_battle(state) if requested == "battle" else _render_page(state, requested)
 
