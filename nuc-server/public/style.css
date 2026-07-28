@@ -141,6 +141,54 @@ h1 {
   to   { opacity: 1; transform: translateY(0); }
 }
 
+.announcer-note {
+  position: relative;
+  min-height: 76px;
+  padding: 11px 13px 11px 16px;
+  overflow: hidden;
+  border: 1px solid #b9ad91;
+  border-left: 4px solid #8f1f1b;
+  border-radius: 5px;
+  background:
+    linear-gradient(135deg, rgba(143,31,27,.08), transparent 48%),
+    #f3eddf;
+  color: #302b24;
+  box-shadow: 0 2px 0 rgba(68,56,39,.12);
+}
+
+.announcer-note::after {
+  content: "SYSTEM";
+  position: absolute;
+  right: -5px;
+  bottom: -8px;
+  color: rgba(143,31,27,.06);
+  font: 700 35px "Dungeon Crawler CB", "Share Tech Mono", monospace;
+  letter-spacing: 2px;
+  pointer-events: none;
+}
+
+.announcer-note-label {
+  position: relative;
+  z-index: 1;
+  margin-bottom: 5px;
+  color: #8f1f1b;
+  font: 700 10px "Dungeon Crawler CB", "Share Tech Mono", monospace;
+  letter-spacing: 1.2px;
+}
+
+.announcer-note-line {
+  position: relative;
+  z-index: 1;
+  font-size: 11px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.announcer-note-line + .announcer-note-line {
+  margin-top: 2px;
+  color: #625847;
+}
+
 /* ── LAYOUT ─────────────────────────────────────────────────────────────────── */
 main {
   display: grid;

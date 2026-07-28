@@ -43,6 +43,7 @@ async function fetchState() {
 
 function renderAll() {
   renderCrawler(state.crawler);
+  renderAnnouncerCommentary(state);
   renderMonsters(state.monsters);
   renderEvents(state.events);
   renderLoot(state.loot);
@@ -50,6 +51,59 @@ function renderAll() {
   renderProgression(state);
   renderEncounterQueue(state.monsters);
   renderWorld(state);
+}
+
+function renderAnnouncerCommentary(s) {
+  const c = s.crawler || {};
+  const q = s.quest || {};
+  const progress = Number(q.progress || 0);
+  const required = Number(q.required || 0);
+  const remaining = Math.max(0, required - progress);
+  const importantTypes = new Set([
+    'victory', 'defeat', 'loot', 'achievement', 'level_up', 'quest_complete',
+    'daily_complete', 'floor_up', 'town', 'companion', 'region',
+  ]);
+  const recent = (s.events || []).find(event =>
+    importantTypes.has(event.type) && event.message
+  );
+
+  const notes = {
+    'announcer-character': {
+      label: 'ANNOUNCER ASSESSMENT',
+      lines: [
+        `Crawler Carl is level ${c.level || 1}. This is technically growth.`,
+        `${c.kills || 0} kills recorded. Competence remains under investigation.`,
+      ],
+    },
+    'announcer-quest': {
+      label: 'QUEST OUTLOOK',
+      lines: required
+        ? [
+            `${progress} of ${required} mandatory inconveniences completed.`,
+            remaining
+              ? `${remaining} ${remaining === 1 ? 'remains' : 'remain'}. Donut has declined to carry you.`
+              : 'Objective complete. Management is inventing fresh paperwork.',
+          ]
+        : [
+            'No active quest. Even bureaucracy needs a lunch break.',
+            'Please stand by while destiny locates the correct form.',
+          ],
+    },
+    'announcer-broadcast': {
+      label: 'LIVE COMMENTARY',
+      lines: [
+        recent ? cleanMessage(recent.message) : 'Nothing dramatic has happened. Disappointing.',
+        'Remember: confidence is not armor, despite Carl’s testing.',
+      ],
+    },
+  };
+
+  Object.entries(notes).forEach(([id, note]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = `<div class="announcer-note-label">${escHtml(note.label)}</div>
+      ${note.lines.map(line => `<div class="announcer-note-line">${escHtml(line)}</div>`).join('')}`;
+  });
 }
 
 function renderWorld(s) {
