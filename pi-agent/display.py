@@ -492,13 +492,13 @@ def _render_page(state, page):
         events = state.get("events") or []
         draw.text((4, 25), "LAST 24 HOURS", font=bold, fill=0)
         draw.text((4, 43), f"WINS {recap.get('victories',0)}", font=body, fill=0)
-        draw.text((64, 43), f"LOSSES {recap.get('defeats',0)}", font=body, fill=0)
+        draw.text((64, 43), f"LOST {recap.get('defeats',0)}", font=body, fill=0)
         draw.text((4, 58), f"LOOT {recap.get('loot',0)}", font=body, fill=0)
         draw.text((64, 58), f"TOWN {recap.get('towns',0)}", font=body, fill=0)
         draw.text((4, 73), f"LEVELS {recap.get('levels',0)}", font=tiny, fill=0)
         draw.text((64, 73), f"FOUND {recap.get('discoveries',0)}", font=tiny, fill=0)
         draw.line((3, 87, W - 4, 87), fill=0)
-        draw.text((4, 93), "ANNOUNCER VERDICT", font=bold, fill=0)
+        draw.text((4, 93), "SYSTEM VERDICT", font=bold, fill=0)
         y = 108
         verdict = recap.get("message") or "The accountants found nothing worth exaggerating."
         for line in _wrap(verdict, tiny, W - 16, 5):
@@ -507,7 +507,14 @@ def _render_page(state, page):
         draw.line((3, 162, W - 4, 162), fill=0)
         draw.text((4, 168), "RECENT SHAME", font=bold, fill=0)
         y = 184
-        recent = [event for event in events if event.get("message")][:4]
+        important_types = {
+            "victory", "defeat", "loot", "level_up", "achievement", "town",
+            "region", "quest_complete", "daily_complete", "prestige", "offline",
+        }
+        recent = [
+            event for event in events
+            if event.get("message") and event.get("type") in important_types
+        ][:3]
         if not recent:
             recent = [{"message": "Nothing happened. Somehow this is still Carl's fault."}]
         for event in recent:
@@ -516,8 +523,10 @@ def _render_page(state, page):
                 if text.upper().startswith(prefix):
                     text = text[len(prefix):].strip()
                     break
-            draw.text((4, y), _fit(f"> {text}", tiny, W - 14, True), font=tiny, fill=0)
-            y += 13
+            for line in _wrap(f"> {text}", tiny, W - 16, 2):
+                draw.text((4, y), line, font=tiny, fill=0)
+                y += 9
+            y += 2
         return image
     else:
         recap = (state.get("weeklyRecap") or {}).get("message") or "The accountants are still counting."

@@ -790,6 +790,92 @@ main {
 .notable-monster b { color: #8c211c; }
 .notable-monster span { color: #625c50; }
 
+.region-route {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+}
+
+.region-card {
+  position: relative;
+  min-height: 92px;
+  padding: 13px;
+  background: #fffaf0;
+  border: 1px solid #b8ad93;
+  border-left: 5px solid #827761;
+  border-radius: 7px;
+}
+
+.region-card.current-region {
+  border-color: #8a5a08;
+  border-left-color: #8a5a08;
+  box-shadow: inset 0 0 0 1px #d8bd78;
+}
+
+.region-step {
+  color: #7b241c;
+  font: 800 9px/1 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 1px;
+}
+
+.region-name {
+  margin-top: 7px;
+  color: #211f1a;
+  font: 700 15px/1.2 Georgia, serif;
+}
+
+.region-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 12px;
+  margin-top: 9px;
+  color: #625c50;
+  font-size: 10px;
+}
+
+.threat-heading {
+  margin-bottom: 9px;
+  color: #625c50;
+  font: 800 10px/1.2 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: .9px;
+}
+
+.threat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 9px;
+}
+
+.threat-card {
+  padding: 11px 12px;
+  background: #fffaf0;
+  border: 1px solid #b8ad93;
+  border-left: 5px solid #7b241c;
+  border-radius: 7px;
+}
+
+.threat-card.nemesis { border-left-color: #713f78; }
+.threat-tag {
+  color: #7b241c;
+  font: 900 9px/1 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 1px;
+}
+.threat-card.nemesis .threat-tag { color: #713f78; }
+.threat-name {
+  margin-top: 5px;
+  color: #211f1a;
+  font-weight: 800;
+  line-height: 1.3;
+}
+.threat-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 12px;
+  margin-top: 8px;
+  color: #625c50;
+  font-size: 10px;
+}
+
 #event-log { height: 360px; gap: 7px; padding: 12px; }
 .event-entry {
   grid-template-columns: 22px 58px 1fr;
@@ -897,6 +983,55 @@ main {
   color: #312d26;
   font-size: 13px;
   line-height: 1.6;
+  font-style: normal;
+}
+
+.recap-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 7px;
+}
+
+.recap-stat-grid > div {
+  padding: 8px 5px;
+  text-align: center;
+  background: #e7dfca;
+  border: 1px solid #c1b59b;
+  border-radius: 6px;
+}
+
+.recap-stat-grid b {
+  display: block;
+  color: #68251f;
+  font-size: 18px;
+  line-height: 1.1;
+}
+
+.recap-stat-grid span,
+.recap-weekly-label {
+  color: #625c50;
+  font: 800 9px/1.2 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: .7px;
+}
+
+.recap-verdict {
+  margin-top: 10px;
+  padding: 10px;
+  background: #fffaf0;
+  border-left: 4px solid #7b241c;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.recap-weekly-label {
+  margin-top: 12px;
+}
+
+.recap-weekly-text {
+  margin-top: 4px;
+  color: #625c50;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .empty-dungeon, .empty-state { color: #625c50; font-size: 13px; }
@@ -959,6 +1094,7 @@ main {
   .stat-box { min-width: 0; }
   .xp-track { min-width: 0; }
   .monster-grid { grid-template-columns: 1fr; }
+  .region-route, .threat-grid { grid-template-columns: 1fr; }
   .monster-icon-wrap { height: 86px; }
   .monster-icon { width: 82px; height: 82px; }
   #game-controls { grid-template-columns: 1fr; }

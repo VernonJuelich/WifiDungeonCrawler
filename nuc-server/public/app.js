@@ -72,21 +72,47 @@ function renderWorld(s) {
 
   const map = s.map || [];
   document.getElementById('world-map').innerHTML = map.length
-    ? `<div class="map-field">${map.map((r, i) => {
+    ? `<div class="region-route">${map.slice(0, 12).map((r, i) => {
         const regionName = String(r.name || 'Unmapped Region').replace(/\bundefined\b/gi, 'Dead Zone');
-        return `<div class="map-node" style="left:${5 + r.x * .88}%;top:${8 + r.y * .72}%"
-          title="${escHtml(regionName)}">${i === 0 ? '◆' : '◇'}<span>${escHtml(regionName)}</span></div>`;
+        return `<div class="region-card ${i === 0 ? 'current-region' : ''}">
+          <div class="region-step">${i === 0 ? 'CURRENT' : `#${String(i + 1).padStart(2, '0')}`}</div>
+          <div class="region-name">${escHtml(regionName)}</div>
+          <div class="region-meta">
+            <span>${Number(r.room_count || 0)} rooms</span>
+            <span>${Number(r.visits || 0)} visits</span>
+            <span>${relativeTime(r.last_seen)}</span>
+          </div>
+        </div>`;
       }).join('')}</div>`
     : '<div class="empty-state">Walk somewhere. Geography refuses to generate itself.</div>';
 
   const notable = [...(s.nemeses || []).map(m => ({ ...m, tag: 'NEMESIS' })),
     ...(s.bosses || []).map(m => ({ ...m, tag: 'BOSS' }))].slice(0, 6);
-  document.getElementById('boss-list').innerHTML = notable.map(m =>
-    `<div class="notable-monster"><b>${m.tag}</b> ${escHtml(m.lore_title || m.monster_name)}
-      <span>${m.victories || 0}W/${m.defeats || 0}L · BEST ${m.best_signal || m.signal} dBm</span></div>`).join('');
+  document.getElementById('boss-list').innerHTML = notable.length
+    ? `<div class="threat-heading">KNOWN PROBLEMS CARL HAS NOT SOLVED</div>
+      <div class="threat-grid">${notable.map(m =>
+        `<div class="threat-card ${String(m.tag).toLowerCase()}">
+          <div class="threat-tag">${m.tag}</div>
+          <div class="threat-name">${escHtml(m.lore_title || m.monster_name || m.ssid || 'Unnamed Liability')}</div>
+          <div class="threat-meta">
+            <span>CR ${m.cr || '?'}</span>
+            <span>${m.victories || 0}W / ${m.defeats || 0}L</span>
+            <span>BEST ${m.best_signal || m.signal || '?'} dBm</span>
+          </div>
+        </div>`).join('')}</div>`
+    : '<div class="empty-state">No nemeses yet. Even enemies have standards.</div>';
 
-  document.getElementById('weekly-recap').textContent =
-    s.weeklyRecap?.message || 'The dungeon accountants are still counting.';
+  const recent = s.recentRecap || {};
+  document.getElementById('weekly-recap').innerHTML = `
+    <div class="recap-stat-grid">
+      <div><b>${recent.victories || 0}</b><span>WINS</span></div>
+      <div><b>${recent.defeats || 0}</b><span>LOSSES</span></div>
+      <div><b>${recent.loot || 0}</b><span>LOOT</span></div>
+      <div><b>${recent.discoveries || 0}</b><span>FOUND</span></div>
+    </div>
+    <div class="recap-verdict">${escHtml(recent.message || 'Nothing happened. The audience has requested a refund.')}</div>
+    <div class="recap-weekly-label">SEVEN-DAY ARCHIVE</div>
+    <div class="recap-weekly-text">${escHtml(s.weeklyRecap?.message || 'The dungeon accountants are still counting.')}</div>`;
   const difficulty = document.getElementById('difficulty-control');
   const display = document.getElementById('display-control');
   const equipment = document.getElementById('equipment-control');

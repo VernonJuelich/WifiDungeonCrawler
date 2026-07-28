@@ -23,6 +23,11 @@ function weekKey() {
   return `${d.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
 }
 
+function generatedRegionName(fingerprint) {
+  const seed = parseInt(String(fingerprint).slice(0, 8), 16);
+  return `The ${REGION_A[seed % REGION_A.length]} ${REGION_B[(seed >>> 3) % REGION_B.length]}`;
+}
+
 function ensureDailyQuests() {
   const date = today();
   for (const [code, title, description, required] of DAILY) {
@@ -54,8 +59,7 @@ function regionFor(networks) {
   const fingerprint = hash(keys.join('|'), 16);
   let region = db.prepare('SELECT * FROM regions WHERE fingerprint=?').get(fingerprint);
   if (!region) {
-    const seed = parseInt(fingerprint.slice(0, 8), 16);
-    const name = `The ${REGION_A[seed % REGION_A.length]} ${REGION_B[(seed >> 3) % REGION_B.length]}`;
+    const name = generatedRegionName(fingerprint);
     const id = `R-${fingerprint.slice(0, 6).toUpperCase()}`;
     db.prepare('INSERT INTO regions (id,name,fingerprint,room_count) VALUES (?,?,?,?)')
       .run(id, name, fingerprint, keys.length);
@@ -241,6 +245,9 @@ function setControl(action, value) {
 function state() {
   ensureDailyQuests();
   const monsters = db.prepare(`SELECT * FROM monsters ORDER BY nemesis DESC,is_boss DESC,last_seen DESC`).all();
+  const brokenRegions = db.prepare("SELECT id,fingerprint FROM regions WHERE name LIKE '%undefined%'").all();
+  const renameRegion = db.prepare('UPDATE regions SET name=? WHERE id=?');
+  for (const region of brokenRegions) renameRegion.run(generatedRegionName(region.fingerprint), region.id);
   const regions = db.prepare('SELECT * FROM regions ORDER BY last_seen DESC LIMIT 20').all();
   return {
     companion: db.prepare('SELECT * FROM companion WHERE id=1').get(),
