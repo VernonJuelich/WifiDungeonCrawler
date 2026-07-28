@@ -1,6 +1,6 @@
 """
-Targeting engine — tries NUC AI scoring first, falls back to local heuristics.
-The NUC uses historical crack data to score candidates via Bayesian inference.
+Encounter selection — tries NUC scoring first, falls back to local heuristics.
+Scores represent fictional game difficulty and encounter desirability.
 Local scoring is the same rule-based system as before, used when NUC unreachable.
 """
 import time

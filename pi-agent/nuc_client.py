@@ -1,7 +1,6 @@
 import urllib.request
 import urllib.error
 import json
-import os
 from config import NUC_BASE
 
 def _post(path: str, data: dict = None, raw_body: bytes = None, headers: dict = None) -> dict | None:
@@ -30,17 +29,9 @@ def post_json(path: str, data: dict, timeout: int = 10) -> dict | None:
 def report_network(network: dict) -> dict | None:
     return _post("/api/network", network)
 
-def report_handshake_file(cap_path: str, bssid: str, ssid: str) -> dict | None:
-    with open(cap_path, "rb") as f:
-        data = f.read()
-    return _post("/api/handshake", raw_body=data, headers={
-        "x-bssid": bssid,
-        "x-ssid": ssid,
-        "Content-Length": str(len(data)),
-    })
-
-def report_handshake_event(bssid: str, ssid: str) -> dict | None:
-    return _post("/api/handshake", headers={"x-bssid": bssid, "x-ssid": ssid}, raw_body=b"")
+def report_encounter(bssid: str, signal: int) -> dict | None:
+    """Advance one simulated combat turn. No packets or credentials are sent."""
+    return _post("/api/encounter", {"bssid": bssid, "signal": signal})
 
 def report_event(event_type: str, data: dict) -> dict | None:
     return _post("/api/event", {"type": event_type, "data": data})

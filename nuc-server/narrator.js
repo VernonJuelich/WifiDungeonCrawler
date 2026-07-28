@@ -2,14 +2,15 @@ const http = require('http');
 
 const OLLAMA_HOST = '127.0.0.1';
 const OLLAMA_PORT = 11434;
-const MODEL = 'llama3.1:8b';
+const MODEL = process.env.OLLAMA_MODEL || 'qwen2.5:7b';
 
 const SYSTEM_PROMPT = `You are THE SYSTEM — the AI announcer of a deadly wifi dungeon crawl reality show called Dungeon Crawler Carl.
 You speak in the style of the book: snarky, dark humor, fourth-wall aware, occasionally sympathetic but mostly entertained by suffering.
 Keep responses SHORT — 1-2 sentences max. Be dramatic. Use ALL CAPS for emphasis sparingly.
-Never break character. The crawler is trying to crack wifi networks. Networks are monsters. You are the announcer.`;
+Never break character. Broadcast WiFi networks become fictional monsters in a harmless signal-strength RPG. Combat is entirely simulated. You are the announcer.`;
 
 async function generateNarration(prompt) {
+  if (process.env.NARRATION_ENABLED === '0') return null;
   return new Promise((resolve) => {
     const body = JSON.stringify({
       model: MODEL,
@@ -34,31 +35,29 @@ async function generateNarration(prompt) {
     });
 
     req.on('error', () => resolve(null));
-    req.setTimeout(30000, () => { req.destroy(); resolve(null); });
+    req.setTimeout(5000, () => { req.destroy(); resolve(null); });
     req.write(body);
     req.end();
   });
 }
 
 const FALLBACKS = {
-  monster_spotted: (name) => `SYSTEM: A ${name} has entered your scan range. It looks annoyed.`,
-  handshake: (name) => `SYSTEM: You landed a hit on the ${name}! Handshake captured. Finish it.`,
-  kill: (name) => `SYSTEM: The ${name} has been SLAIN. Its password was its only protection. Pathetic.`,
-  loot: (item) => `SYSTEM: A ${item.rarity.toUpperCase()} item has materialized from the corpse. "${item.name}."`,
-  level_up: (level) => `SYSTEM: LEVEL ${level}. The dungeon audience is on their feet. Terrifying.`,
-  achievement: (name) => `SYSTEM: ACHIEVEMENT UNLOCKED — "${name}." The alien viewers are screaming.`,
-  crack_fail: (name) => `SYSTEM: The ${name} resisted your wordlist. It mocks you silently.`,
+  monster_spotted: context => `SYSTEM: A ${context.monsterType} has entered your scan range. It looks annoyed.`,
+  encounter: context => `SYSTEM: You engaged the ${context.monsterType}! Stay in range and finish the battle.`,
+  victory: context => `SYSTEM: The ${context.monsterType} has been SLAIN. The audience reluctantly approves.`,
+  loot: context => `SYSTEM: A ${String(context.rarity).toUpperCase()} item has materialized from the corpse. "${context.itemName}."`,
+  level_up: context => `SYSTEM: LEVEL ${context.level}. The dungeon audience is on their feet. Terrifying.`,
+  achievement: context => `SYSTEM: ACHIEVEMENT UNLOCKED — "${context.achievementName}." The alien viewers are screaming.`,
 };
 
 async function narrate(event, context = {}) {
   const prompts = {
     monster_spotted: `A new wifi network (monster) named "${context.ssid}" has appeared. It's classified as a "${context.monsterType}" (CR ${context.cr}).`,
-    handshake: `The crawler just captured a WPA handshake from "${context.ssid}" (a ${context.monsterType}). The crack pipeline is starting.`,
-    kill: `The crawler just CRACKED the password for "${context.ssid}" (a ${context.monsterType}). Password was "${context.password}". Monster is dead.`,
+    encounter: `The crawler entered signal range of "${context.ssid}" (a ${context.monsterType}) and started a simulated battle.`,
+    victory: `The crawler defeated "${context.ssid}" (a ${context.monsterType}) in a fictional signal-strength battle.`,
     loot: `A ${context.rarity} loot item dropped: "${context.itemName}". Flavor: ${context.flavor}`,
     level_up: `The crawler just reached level ${context.level}! They now have ${context.xp} XP toward the next level.`,
     achievement: `Achievement unlocked: "${context.achievementName}". Description: ${context.desc}`,
-    crack_fail: `The password crack failed for "${context.ssid}" (a ${context.monsterType}). The wordlist was exhausted.`,
   };
 
   const aiResponse = await generateNarration(prompts[event] || event);
@@ -66,8 +65,7 @@ async function narrate(event, context = {}) {
 
   const fallback = FALLBACKS[event];
   if (fallback) {
-    const arg = context.monsterType || context.ssid || context.level || context.itemName || context.name || '';
-    return fallback(arg, context);
+    return fallback(context);
   }
   return 'SYSTEM: Something happened. The audience is watching.';
 }

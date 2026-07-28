@@ -1,7 +1,7 @@
 const { DatabaseSync } = require('node:sqlite');
 const path = require('path');
 
-const db = new DatabaseSync(path.join(__dirname, 'dungeon.db'));
+const db = new DatabaseSync(process.env.DUNGEON_DB || path.join(__dirname, 'dungeon.db'));
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS crawler (
@@ -30,10 +30,7 @@ db.exec(`
     status TEXT DEFAULT 'alive',
     first_seen TEXT DEFAULT (datetime('now')),
     last_seen TEXT DEFAULT (datetime('now')),
-    clients INTEGER DEFAULT 0,
-    handshake_captured INTEGER DEFAULT 0,
-    cracked INTEGER DEFAULT 0,
-    password TEXT
+    clients INTEGER DEFAULT 0
   );
 
   CREATE TABLE IF NOT EXISTS loot (
@@ -65,5 +62,19 @@ db.exec(`
 
   INSERT OR IGNORE INTO crawler (id, name) VALUES (1, 'Carl');
 `);
+
+// Lightweight migrations for existing installations.
+const monsterColumns = new Set(
+  db.prepare("PRAGMA table_info(monsters)").all().map(column => column.name)
+);
+if (!monsterColumns.has('encounter_progress')) {
+  db.exec('ALTER TABLE monsters ADD COLUMN encounter_progress INTEGER DEFAULT 0');
+}
+if (!monsterColumns.has('encounter_required')) {
+  db.exec('ALTER TABLE monsters ADD COLUMN encounter_required INTEGER DEFAULT 100');
+}
+if (!monsterColumns.has('victories')) {
+  db.exec('ALTER TABLE monsters ADD COLUMN victories INTEGER DEFAULT 0');
+}
 
 module.exports = db;

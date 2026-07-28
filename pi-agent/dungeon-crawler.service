@@ -1,0 +1,17 @@
+[Unit]
+Description=Dungeon Crawler WiFi RPG Agent
+After=network-online.target
+Wants=network-online.target
+Conflicts=bjorn.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/bjorn/dungeon
+ExecStart=/usr/bin/python3 /home/bjorn/dungeon/main.py
+Restart=always
+RestartSec=10
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

@@ -218,11 +218,11 @@ main {
   color: var(--red); font-size: 14px; font-weight: bold; opacity: 0.9;
 }
 
-@keyframes wounded-pulse {
+@keyframes engaged-pulse {
   0%, 100% { border-color: var(--gold); box-shadow: 0 0 8px rgba(255,215,0,0.4); }
   50%       { border-color: rgba(255,215,0,0.3); box-shadow: none; }
 }
-.monster-card.wounded { animation: wounded-pulse 1.8s ease-in-out infinite; }
+.monster-card.engaged { animation: engaged-pulse 1.8s ease-in-out infinite; }
 
 .monster-icon-wrap {
   display: flex; justify-content: center; align-items: center;
@@ -337,8 +337,8 @@ main {
 .event-entry.kill            { border-color: var(--green); }
 .event-entry.kill .event-msg { color: var(--green); }
 
-.event-entry.handshake       { border-color: var(--gold); }
-.event-entry.handshake .event-msg { color: var(--gold); }
+.event-entry.encounter       { border-color: var(--gold); }
+.event-entry.encounter .event-msg { color: var(--gold); }
 
 .event-entry.achievement     { border-color: var(--gold); background: rgba(255,215,0,0.04); }
 .event-entry.achievement .event-msg { color: var(--gold); }
@@ -349,8 +349,6 @@ main {
 .event-entry.level_up        { border-color: var(--green); background: rgba(0,255,136,0.05); }
 .event-entry.level_up .event-msg { color: var(--green); font-weight: bold; }
 
-.event-entry.crack_fail      { border-color: var(--red); }
-.event-entry.crack_fail .event-msg { color: var(--red); opacity: 0.7; }
 
 .event-entry.system-boot     { border-color: var(--text-dim); }
 .event-entry.system-boot .event-msg { color: var(--text-dim); font-style: italic; }
@@ -378,14 +376,13 @@ main {
 .loot-rarity { font-size: 9px; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 2px; }
 .loot-flavor { color: var(--text-dim); font-size: 10px; margin-top: 2px; font-style: italic; }
 
-/* ── CRACK PIPELINE ─────────────────────────────────────────────────────────── */
-#crack-queue { padding: 10px; max-height: 130px; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; }
-.crack-item {
+/* ── ACTIVE ENCOUNTERS ──────────────────────────────────────────────────────── */
+#encounter-queue { padding: 10px; max-height: 130px; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; }
+.encounter-item {
   background: var(--bg3); border-left: 3px solid var(--accent);
   padding: 6px 10px; font-size: 11px; border-radius: 2px;
 }
-.crack-running { border-color: var(--gold); }
-.crack-done    { border-color: var(--green); opacity: 0.5; }
+.encounter-running { border-color: var(--gold); }
 
 /* ── POPUPS ─────────────────────────────────────────────────────────────────── */
 #achievement-popup, #loot-popup {

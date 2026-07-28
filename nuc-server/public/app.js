@@ -12,12 +12,12 @@ const MONSTER_ICON = {
 
 const EVENT_ICONS = {
   monster_spotted: '👁',
-  handshake:       '💥',
-  kill:            '☠',
+  encounter:       '⚔',
+  battle_turn:     '⚡',
+  victory:         '☠',
   loot:            '🎁',
   achievement:     '🏆',
   level_up:        '⬆',
-  crack_fail:      '✗',
   'system-boot':   '⚡',
 };
 
@@ -122,7 +122,7 @@ function renderMonsters(monsters) {
 
     return `
     <div class="monster-card ${m.status || 'alive'}" title="${escHtml(m.bssids.join('\n'))}">
-      ${m.ai_score != null ? `<span class="ai-score ai-score-${aiTier(m.ai_score)}" title="AI crack probability">${m.ai_score}%</span>` : ''}
+      ${m.ai_score != null ? `<span class="ai-score ai-score-${aiTier(m.ai_score)}" title="Encounter priority">${m.ai_score}%</span>` : ''}
       ${m.count > 1 ? `<span class="monster-count">×${m.count}</span>` : ''}
       <div class="monster-icon-wrap">
         <img class="monster-icon monster-icon-${(m.monster_type||'').toLowerCase().replace(/\s+/g,'-')}"
@@ -247,14 +247,19 @@ function connectSSE() {
         addEventEntry(data);
         break;
 
-      case 'handshake':
-        updateMonsterStatus(data.bssid, 'wounded');
+      case 'encounter':
+        updateMonsterStatus(data.bssid, 'engaged');
         if (data.message) showAnnouncement(data.message);
         addEventEntry(data);
-        addCrackItem(data.bssid, data.ssid, 'running');
+        updateEncounterItem(data);
         break;
 
-      case 'kill':
+      case 'battle_turn':
+        updateMonsterStatus(data.bssid, 'engaged');
+        updateEncounterItem(data);
+        break;
+
+      case 'victory':
         updateMonsterStatus(data.bssid, 'dead');
         document.getElementById('crawler-kills').textContent =
           parseInt(document.getElementById('crawler-kills').textContent || 0) + 1;
@@ -286,9 +291,6 @@ function connectSSE() {
         addEventEntry(data);
         break;
 
-      case 'crack_fail':
-        addEventEntry(data);
-        break;
     }
   };
 
@@ -312,15 +314,20 @@ function updateMonsterStatus(bssid, status) {
   renderMonsters(state.monsters);
 }
 
-function addCrackItem(bssid, ssid, status) {
-  const queue = document.getElementById('crack-queue');
+function updateEncounterItem(data) {
+  const queue = document.getElementById('encounter-queue');
   const empty = queue.querySelector('.empty-state');
   if (empty) empty.remove();
-  const div = document.createElement('div');
-  div.className = `crack-item crack-${status}`;
-  div.id = `crack-${bssid.replace(/:/g,'')}`;
-  div.textContent = `${ssid || bssid} — cracking...`;
-  queue.insertBefore(div, queue.firstChild);
+  const id = `encounter-${data.bssid.replace(/:/g,'')}`;
+  let div = document.getElementById(id);
+  if (!div) {
+    div = document.createElement('div');
+    div.className = 'encounter-item encounter-running';
+    div.id = id;
+    queue.insertBefore(div, queue.firstChild);
+  }
+  const pct = Math.min(100, Math.round((data.progress / Math.max(1, data.required)) * 100));
+  div.textContent = `${data.ssid || data.bssid} — battle ${pct}%`;
 }
 
 // ── Crawler rename ────────────────────────────────────────────────────────────

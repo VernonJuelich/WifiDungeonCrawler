@@ -2,7 +2,8 @@ node_modules/
 dungeon.db
 dungeon.db-shm
 dungeon.db-wal
-handshakes/*.cap
-handshakes/*.hc22000
+nuc-server/cracked/
+nuc-server/handshakes/
+Screenshots/
 *.log
 .DS_Store

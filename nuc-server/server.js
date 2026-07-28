@@ -4,16 +4,16 @@ const EventEmitter = require('events');
 const db = require('./db');
 const { classifyMonster, rollLoot, addXP, checkAchievements, logEvent, getCrawlerState } = require('./game-engine');
 const { narrate } = require('./narrator');
-const crackPipeline = require('./crack-pipeline');
+const battleEngine = require('./battle-engine');
 const { scoreTargets, getModelStats } = require('./ai-targeting');
 
 const app = express();
-const PORT = 9310;
+const PORT = Number(process.env.PORT || 9310);
 
 // SSE event bus
 const bus = new EventEmitter();
 bus.setMaxListeners(50);
-crackPipeline.setEmitter(bus);
+battleEngine.setEmitter(bus);
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -81,31 +81,13 @@ app.post('/api/network', async (req, res) => {
   })();
 });
 
-// POST /api/handshake  — Pi sends a .cap file (multipart) or signals capture
-app.post('/api/handshake', express.raw({ type: '*/*', limit: '50mb' }), async (req, res) => {
-  const bssid = req.headers['x-bssid'];
-  const ssid  = req.headers['x-ssid'] || '';
-  if (!bssid) return res.status(400).json({ error: 'x-bssid header required' });
-
-  if (req.body && req.body.length) {
-    const fs = require('fs');
-    const safeBssid = bssid.replace(/:/g, '-');
-    const safeSsid  = ssid.replace(/[^a-zA-Z0-9_-]/g, '_');
-    const filename  = `${safeBssid}_${safeSsid}.cap`;
-    fs.writeFileSync(path.join(__dirname, 'handshakes', filename), req.body);
-    // crack-pipeline watcher will pick it up automatically
-    res.json({ status: 'queued', filename });
-  } else {
-    // Pi just signals a capture happened (no file upload), mark it
-    db.prepare(`UPDATE monsters SET handshake_captured=1, status='wounded' WHERE bssid=?`).run(bssid);
-    const monster = db.prepare('SELECT * FROM monsters WHERE bssid=?').get(bssid);
-    res.json({ status: 'noted' });
-    (async () => {
-      const msg = await narrate('handshake', { ssid, monsterType: monster?.monster_type || 'Unknown' });
-      logEvent('handshake', msg, { bssid, ssid });
-      bus.emit('event', { type: 'handshake', message: msg, bssid, ssid });
-    })();
-  }
+// POST /api/encounter — a safe game turn based only on public beacon metadata.
+app.post('/api/encounter', async (req, res) => {
+  const { bssid, signal = -90 } = req.body || {};
+  if (!bssid) return res.status(400).json({ error: 'bssid required' });
+  const result = await battleEngine.advanceEncounter(bssid, signal);
+  if (result.error) return res.status(404).json(result);
+  res.json(result);
 });
 
 // POST /api/event  — generic game events from Pi
@@ -154,12 +136,9 @@ app.get('/api/targeting/stats', (req, res) => {
 });
 
 app.get('/api/leaderboard', (req, res) => {
-  const top = db.prepare('SELECT ssid, monster_type, xp_value, encryption FROM monsters WHERE cracked=1 ORDER BY xp_value DESC LIMIT 10').all();
+  const top = db.prepare("SELECT ssid, monster_type, xp_value, encryption FROM monsters WHERE status='dead' ORDER BY xp_value DESC LIMIT 10").all();
   res.json(top);
 });
-
-// ── Start ───────────────────────────────────────────────────────────────────────
-crackPipeline.startWatcher();
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`[DUNGEON CRAWLER] NUC Server running on port ${PORT}`);
