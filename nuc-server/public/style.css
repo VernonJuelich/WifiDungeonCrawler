@@ -274,11 +274,12 @@ main {
 
 .monster-icon-wrap {
   display: flex; justify-content: center; align-items: center;
-  height: 56px; margin-bottom: 6px;
+  height: 72px; margin-bottom: 6px;
 }
 
 .monster-icon {
-  width: 52px; height: 52px;
+  width: 68px; height: 68px;
+  object-fit: contain;
   filter: invert(1) brightness(0.85);
   transition: filter 0.2s;
 }
@@ -506,8 +507,8 @@ main {
     grid-template-columns: repeat(2, minmax(0,1fr)); gap: 6px; padding: 7px;
   }
   .monster-card { padding: 9px 6px 7px; }
-  .monster-icon-wrap { height: 44px; }
-  .monster-icon { width: 42px; height: 42px; }
+  .monster-icon-wrap { height: 58px; }
+  .monster-icon { width: 56px; height: 56px; }
   #achievement-list, #event-log, #loot-list { max-height: 320px; }
   #history-chart { min-height: 130px; }
   #achievement-popup, #loot-popup {

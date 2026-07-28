@@ -1,13 +1,13 @@
 const MONSTER_ICON = {
-  'Naked Slime':       '/icons/slime.svg',
-  'Armoured Goblin':    '/icons/goblin.svg',
-  'Cave Troll':        '/icons/troll.svg',
-  'Dungeon Wyvern':    '/icons/wyvern.svg',
-  'Dungeon Drake':     '/icons/drake.svg',
-  'The Lich':          '/icons/lich.svg',
-  'Common Peasant':    '/icons/peasant.svg',
-  'Invisible Stalker': '/icons/stalker.svg',
-  'Unknown Horror':    '/icons/horror.svg',
+  'Naked Slime':       '/icons/slime.png',
+  'Armoured Goblin':   '/icons/goblin.png',
+  'Cave Troll':        '/icons/troll.png',
+  'Dungeon Wyvern':    '/icons/wyvern.png',
+  'Dungeon Drake':     '/icons/drake.png',
+  'The Lich':          '/icons/lich.png',
+  'Common Peasant':    '/icons/peasant.png',
+  'Invisible Stalker': '/icons/stalker.png',
+  'Unknown Horror':    '/icons/horror.png',
 };
 
 const EVENT_ICONS = {
@@ -193,7 +193,7 @@ function renderMonsters(monsters) {
       ${m.count > 1 ? `<span class="monster-count">×${m.count}</span>` : ''}
       <div class="monster-icon-wrap">
         <img class="monster-icon monster-icon-${(m.monster_type||'').toLowerCase().replace(/\s+/g,'-')}"
-          src="${MONSTER_ICON[m.monster_type] || '/icons/horror.svg'}"
+          src="${MONSTER_ICON[m.monster_type] || '/icons/horror.png'}"
           alt="${escHtml(m.monster_type)}"
           onerror="this.style.display='none'">
       </div>
