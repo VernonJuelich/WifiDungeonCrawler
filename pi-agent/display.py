@@ -180,12 +180,6 @@ def _render(state):
     portrait = _character_frame(target, events, bool(monsters))
     _paste_center(image, portrait, 74)
 
-    # Decorative divider inspired by Ragnar's frise strip.
-    for x in range(4, W - 4, 8):
-        draw.line((x, 163, x + 3, 166), fill=0)
-        draw.line((x + 3, 166, x + 6, 163), fill=0)
-    draw.line((1, 169, W - 2, 169), fill=0)
-
     name = crawler.get("name") or "Carl"
     xp = int(crawler.get("xp") or 0)
     xp_next = max(1, int(crawler.get("xp_next") or 100))
@@ -195,15 +189,15 @@ def _render(state):
     max_health = max(1, int(crawler.get("max_health") or 100))
     stamina = int(crawler.get("stamina") or 0)
     max_stamina = max(1, int(crawler.get("max_stamina") or 100))
-    draw.text((3, 174), _fit(name.upper(), bold, 60), font=bold, fill=0)
-    draw.text((76, 174), f"KILLS {kills}", font=tiny, fill=0)
-    draw.text((3, 184), _fit(f"MOOD: {mood.upper()}", tiny, W - 6), font=tiny, fill=0)
-    draw.text((3, 194), "HP", font=tiny, fill=0)
-    draw.rectangle((19, 195, 57, 200), outline=0)
-    draw.rectangle((20, 196, 20 + int(36 * health / max_health), 199), fill=0)
-    draw.text((62, 194), "ST", font=tiny, fill=0)
-    draw.rectangle((78, 195, W - 4, 200), outline=0)
-    draw.rectangle((79, 196, 79 + int((W - 84) * stamina / max_stamina), 199), fill=0)
+    draw.text((3, 160), _fit(name.upper(), bold, 60), font=bold, fill=0)
+    draw.text((76, 160), f"KILLS {kills}", font=tiny, fill=0)
+    draw.text((3, 170), _fit(f"MOOD: {mood.upper()}", tiny, W - 6), font=tiny, fill=0)
+    draw.text((3, 180), "HP", font=tiny, fill=0)
+    draw.rectangle((19, 181, 57, 186), outline=0)
+    draw.rectangle((20, 182, 20 + int(36 * health / max_health), 185), fill=0)
+    draw.text((62, 180), "ST", font=tiny, fill=0)
+    draw.rectangle((78, 181, W - 4, 186), outline=0)
+    draw.rectangle((79, 182, 79 + int((W - 84) * stamina / max_stamina), 185), fill=0)
     message = ""
     for event in events:
         if event.get("message"):
@@ -212,7 +206,7 @@ def _render(state):
     if not message:
         message = QUIPS[_quip_index % len(QUIPS)]
         _quip_index += 1
-    y = 204
+    y = 190
     for line in _wrap(message, tiny, W - 8, 3):
         draw.text((4, y), line, font=tiny, fill=0)
         y += 10
