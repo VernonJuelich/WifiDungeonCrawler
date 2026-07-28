@@ -117,10 +117,10 @@ def _character_frame(target, events, has_monsters):
         try:
             frame = Image.open(frame_path).convert("L")
             frame.thumbnail((105, 83), Image.Resampling.LANCZOS)
-            # Bjorn's source animation frames include a baked-in floor line.
-            # Crop it so the character floats cleanly in the unified HUD.
-            if frame.height > 8:
-                frame = frame.crop((0, 0, frame.width, frame.height - 8))
+            # Bjorn's source animation frames include a thin baked-in floor line.
+            # Trim only its bottom edge so Bjorn's feet and shadow stay visible.
+            if frame.height > 3:
+                frame = frame.crop((0, 0, frame.width, frame.height - 3))
             return frame.convert("1")
         except Exception:
             pass
