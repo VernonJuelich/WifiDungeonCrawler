@@ -216,12 +216,12 @@ def _render(state):
     draw.text((3, 151), _fit(name.upper(), bold, 60, True), font=bold, fill=0)
     draw.text((65, 152), f"QUEST {quest_progress}/{quest_required}", font=tiny, fill=0)
     draw.text((3, 163), _fit(f"MOOD: {mood.upper()}", tiny, W - 10, True), font=tiny, fill=0)
-    draw.text((3, 171), "HP", font=tiny, fill=0)
-    draw.rectangle((19, 172, 57, 177), outline=0)
-    draw.rectangle((20, 173, 20 + int(36 * health / max_health), 176), fill=0)
-    draw.text((62, 171), "ST", font=tiny, fill=0)
-    draw.rectangle((78, 172, W - 4, 177), outline=0)
-    draw.rectangle((79, 173, 79 + int((W - 84) * stamina / max_stamina), 176), fill=0)
+    draw.text((3, 175), "HP", font=tiny, fill=0)
+    draw.rectangle((19, 176, 57, 181), outline=0)
+    draw.rectangle((20, 177, 20 + int(36 * health / max_health), 180), fill=0)
+    draw.text((62, 175), "ST", font=tiny, fill=0)
+    draw.rectangle((78, 176, W - 4, 181), outline=0)
+    draw.rectangle((79, 177, 79 + int((W - 84) * stamina / max_stamina), 180), fill=0)
     message = ""
     for event in events:
         if event.get("message"):
@@ -234,7 +234,7 @@ def _render(state):
         if message.upper().startswith(prefix):
             message = message[len(prefix):].strip()
             break
-    y = 182
+    y = 186
     for line in _wrap(message, tiny, W - 14, 5):
         draw.text((4, y), line, font=tiny, fill=0)
         y += 10
