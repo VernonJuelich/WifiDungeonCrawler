@@ -15,6 +15,8 @@ from config import NUC_BASE
 W, H = 122, 250
 UPDATE_SEC = 30
 PAGE_ROTATE_SEC = 60
+CONTROL_POLL_SEC = 3
+MIN_STATE_REFRESH_SEC = 12
 ASSET_ROOT = "/home/bjorn/Bjorn/resources/images/static"
 CHARACTER_ROOT = "/home/bjorn/dungeon/assets/characters"
 DONUT_ROOT = "/home/bjorn/dungeon/assets/donut"
@@ -516,9 +518,11 @@ def _render(state):
     crawler = state.get("crawler") or {}
     requested = crawler.get("display_page") or "auto"
     engaged = any(m.get("status") == "engaged" for m in state.get("monsters") or [])
-    if requested == "battle" or engaged:
+    if requested == "battle":
         return _render_battle(state)
     if requested == "auto":
+        if engaged:
+            return _render_battle(state)
         pages = ("battle", "character", "quest", "donut", "loot", "summary")
         requested = pages[int(time.time() // PAGE_ROTATE_SEC) % len(pages)]
     return _render_battle(state) if requested == "battle" else _render_page(state, requested)
@@ -534,10 +538,42 @@ def display_loop():
         print(f"[DISPLAY] Init failed: {error}")
         return
 
+    last_signature = None
+    last_page_key = None
+    last_refresh = 0
     while True:
         try:
-            epd.display(epd.getbuffer(_render(_state())))
-            print("[DISPLAY] Screen updated")
+            state = _state()
+            crawler = state.get("crawler") or {}
+            requested = crawler.get("display_page") or "auto"
+            events = state.get("events") or []
+            latest_event = events[0].get("id") if events else None
+            engaged = next(
+                (monster for monster in state.get("monsters") or [] if monster.get("status") == "engaged"),
+                None,
+            )
+            auto_slot = int(time.time() // PAGE_ROTATE_SEC) if requested == "auto" else 0
+            signature = (
+                requested,
+                auto_slot,
+                latest_event,
+                (engaged or {}).get("bssid"),
+                (engaged or {}).get("hp"),
+            )
+            page_key = (requested, auto_slot)
+            now = time.time()
+            page_changed = page_key != last_page_key
+            state_changed = signature != last_signature
+            if (
+                page_changed
+                or (state_changed and now - last_refresh >= MIN_STATE_REFRESH_SEC)
+                or now - last_refresh >= UPDATE_SEC
+            ):
+                epd.display(epd.getbuffer(_render(state)))
+                last_signature = signature
+                last_page_key = page_key
+                last_refresh = now
+                print(f"[DISPLAY] Screen updated: {requested}")
         except Exception as error:
             print(f"[DISPLAY] Update error: {error}")
-        time.sleep(UPDATE_SEC)
+        time.sleep(CONTROL_POLL_SEC)
