@@ -316,8 +316,13 @@ function renderCrawler(c) {
   const maxHealth = c.max_health || 100;
   document.getElementById('health-fill').style.width =
     Math.min(100, health / maxHealth * 100) + '%';
-  document.getElementById('crawler-vitals').textContent =
-    `HP ${health}/${maxHealth} · ST ${c.stamina ?? 100}/${c.max_stamina || 100} · ${(c.mood || 'curious').toUpperCase()}`;
+  const stamina = c.stamina ?? 100;
+  const maxStamina = c.max_stamina || 100;
+  document.getElementById('stamina-fill').style.width =
+    Math.min(100, stamina / maxStamina * 100) + '%';
+  document.getElementById('health-label').textContent = `${health} / ${maxHealth}`;
+  document.getElementById('stamina-label').textContent = `${stamina} / ${maxStamina}`;
+  document.getElementById('crawler-mood').textContent = (c.mood || 'curious').toUpperCase();
 }
 
 function groupMonsters(monsters) {
@@ -695,8 +700,13 @@ function updateVitals(data) {
   const maxHealth = data.crawlerMaxHealth || 100;
   document.getElementById('health-fill').style.width =
     Math.min(100, health / maxHealth * 100) + '%';
-  document.getElementById('crawler-vitals').textContent =
-    `HP ${health}/${maxHealth} · ST ${data.stamina ?? 0}/${data.maxStamina || 100} · ${(data.mood || '').toUpperCase()}`;
+  const stamina = data.stamina ?? 0;
+  const maxStamina = data.maxStamina || 100;
+  document.getElementById('stamina-fill').style.width =
+    Math.min(100, stamina / maxStamina * 100) + '%';
+  document.getElementById('health-label').textContent = `${health} / ${maxHealth}`;
+  document.getElementById('stamina-label').textContent = `${stamina} / ${maxStamina}`;
+  document.getElementById('crawler-mood').textContent = (data.mood || 'curious').toUpperCase();
 }
 
 // ── Crawler rename ────────────────────────────────────────────────────────────

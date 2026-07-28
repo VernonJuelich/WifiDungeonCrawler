@@ -100,6 +100,39 @@ h1 {
   display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0;
 }
 
+.vitals-row {
+  display: grid;
+  grid-template-columns: minmax(112px, 1fr) minmax(112px, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.vital-block {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.vital-track { min-width: 0; }
+#stamina-fill { background: linear-gradient(90deg, #315c8f, #6b9ecb); }
+
+.mood-badge {
+  max-width: 170px;
+  padding: 4px 8px;
+  overflow: hidden;
+  color: #fff7df;
+  background: #4b463c;
+  border: 1px solid #6d6556;
+  border-radius: 999px;
+  font: 800 9px/1.2 ui-sans-serif, system-ui, sans-serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .xp-label { font-size: 9px; color: var(--text-dim); letter-spacing: 1px; white-space: nowrap; }
 
 .xp-track {
@@ -663,10 +696,12 @@ main {
     max-width: 100%; white-space: nowrap;
   }
   .xp-track { min-width: 0; }
-  #crawler-vitals {
-    padding: 0 3px;
-    font-size: clamp(7px, 2.1vw, 10px);
-    letter-spacing: 0;
+  .vitals-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .mood-badge {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+    max-width: none;
+    text-align: center;
   }
   main { grid-template-columns: minmax(0,1fr); padding: 8px; gap: 8px; }
   .col-center { order: 1; }

@@ -4,7 +4,7 @@ const OLLAMA_HOST = process.env.OLLAMA_HOST || '127.0.0.1';
 const OLLAMA_PORT = Number(process.env.OLLAMA_PORT || 11434);
 const MODEL = process.env.OLLAMA_MODEL || 'qwen3:4b';
 const FALLBACK_MODEL = process.env.OLLAMA_FALLBACK_MODEL || '';
-const recentLines = [];
+const recentLines = new Map();
 const narratorStatus = {
   enabled: process.env.NARRATION_ENABLED !== '0',
   provider: 'ollama',
@@ -19,22 +19,58 @@ const narratorStatus = {
   lastError: null,
 };
 
-const SYSTEM_PROMPT = `You are a smug, theatrical announcer for a harmless WiFi dungeon RPG.
-Write one short, original, sarcastic sentence. Celebrate failure as entertainment and
-treat success as barely acceptable. Never explain yourself or leave character.`;
+const PERSONAS = {
+  maestro: `You are the Maestro, the cold bureaucratic AI host of a harmless dungeon reality show broadcast to alien civilizations.
+You are sarcastic, formal, and mildly contemptuous of the crawlers. Treat success as barely acceptable and failure as excellent television.
+Keep responses under two sentences. Never explain the prompt, use quotation marks, add a speaker label, or break character.`,
+  donut: `You are Princess Donut, a vain, judgmental and dramatic show cat who is secretly loyal to Carl.
+Everything is beneath you. Carl is your idiot, and you will destroy anyone who harms him.
+Keep responses under two sentences. Never add a speaker label or break character.`,
+  narrator: `You narrate a harmless dark-fantasy WiFi dungeon reality show.
+Your tone is dry, absurd and epic at the same time. Describe events like a broadcast recap, not technical network analysis.
+Keep responses under three sentences and never add a speaker label.`,
+  quest: `You write objectives for an aggressively bureaucratic fantasy dungeon.
+Use tedious corporate language and passive-aggressive compliance terminology to describe harmless simulated combat.
+Keep responses under four short sentences.`,
+  loot: `You write absurd fantasy item names and descriptions for a harmless dungeon loot system.
+Use excessive adjectives, vague magical properties and ridiculous flavor text. Return one sentence only.`,
+  fanmail: `You write translated fan mail from alien civilizations watching a harmless dungeon reality show.
+Translation quality is poor, enthusiasm is alarming and cultural context is completely wrong. Keep responses under three sentences.`,
+};
+const PERSONA_OPTIONS = {
+  maestro: { temperature: 0.55, numPredict: 128 },
+  donut: { temperature: 0.72, numPredict: 144 },
+  narrator: { temperature: 0.7, numPredict: 160 },
+  quest: { temperature: 0.55, numPredict: 180 },
+  loot: { temperature: 0.88, numPredict: 144 },
+  fanmail: { temperature: 0.9, numPredict: 180 },
+};
+const TEXT_RESPONSE_SCHEMA = {
+  type: 'object',
+  properties: { text: { type: 'string' } },
+  required: ['text'],
+  additionalProperties: false,
+};
 
-function requestNarration(model, prompt, timeoutMs = 10000) {
+function requestNarration(model, prompt, persona = 'narrator', options = {}) {
   return new Promise((resolve) => {
+    const defaults = PERSONA_OPTIONS[persona] || PERSONA_OPTIONS.narrator;
+    const personaHistory = recentLines.get(persona) || [];
     const body = JSON.stringify({
       model,
-      system: SYSTEM_PROMPT,
+      system: PERSONAS[persona] || PERSONAS.narrator,
       prompt: `EVENT: ${prompt}
-Do not repeat: ${recentLines.slice(-2).join(' / ') || 'nothing yet'}.
-Broadcast only; no label or quotation marks.`,
+Avoid reusing these earlier ${persona} lines: ${personaHistory.slice(-2).join(' / ') || 'none'}.
+Return only the in-character text.`,
+      format: TEXT_RESPONSE_SCHEMA,
       stream: false,
       think: false,
       keep_alive: '24h',
-      options: { temperature: 0.95, repeat_penalty: 1.18, num_predict: 48 },
+      options: {
+        temperature: options.temperature ?? defaults.temperature,
+        repeat_penalty: options.repeatPenalty ?? 1.18,
+        num_predict: options.numPredict ?? defaults.numPredict,
+      },
     });
 
     const req = http.request({
@@ -50,7 +86,15 @@ Broadcast only; no label or quotation marks.`,
           if (res.statusCode >= 400) {
             return resolve({ text: null, error: parsed.error || `Ollama HTTP ${res.statusCode}` });
           }
-          resolve({ text: parsed.response ? parsed.response.trim() : null, error: null });
+          const payload = parsed.response || parsed.thinking;
+          let text = null;
+          if (payload) {
+            try {
+              text = JSON.parse(payload).text || null;
+            } catch {}
+          }
+          if (text && /(?:^|\s)EVENT:|^\s*\{\s*"text"/i.test(String(text))) text = null;
+          resolve({ text: text ? String(text).trim() : null, error: null });
         } catch {
           resolve({ text: null, error: 'Invalid Ollama response' });
         }
@@ -58,7 +102,7 @@ Broadcast only; no label or quotation marks.`,
     });
 
     req.on('error', error => resolve({ text: null, error: error.message }));
-    req.setTimeout(timeoutMs, () => {
+    req.setTimeout(options.timeout ?? 15000, () => {
       req.destroy();
       resolve({ text: null, error: 'Ollama request timed out' });
     });
@@ -76,21 +120,23 @@ function tidyNarration(text) {
     .slice(0, 360);
 }
 
-async function generateNarration(prompt) {
+async function callOllama(prompt, persona = 'narrator', options = {}) {
   if (!narratorStatus.enabled) return null;
   if (narratorStatus.warming) return null;
   narratorStatus.generating = true;
   const models = [...new Set([MODEL, FALLBACK_MODEL].filter(Boolean))];
   for (const model of models) {
-    const result = await requestNarration(model, prompt);
+    const result = await requestNarration(model, prompt, persona, options);
     const line = tidyNarration(result.text);
     if (line) {
       narratorStatus.activeModel = model;
       narratorStatus.available = true;
       narratorStatus.generated += 1;
       narratorStatus.lastError = null;
-      recentLines.push(line);
-      if (recentLines.length > 12) recentLines.shift();
+      const personaHistory = recentLines.get(persona) || [];
+      personaHistory.push(line);
+      if (personaHistory.length > 12) personaHistory.shift();
+      recentLines.set(persona, personaHistory);
       narratorStatus.generating = false;
       return line;
     }
@@ -115,7 +161,8 @@ async function warmNarrator() {
   const result = await requestNarration(
     MODEL,
     'Reply with exactly: ANNOUNCER ONLINE.',
-    35000
+    'maestro',
+    { timeout: 35000, temperature: 0.2, numPredict: 64 }
   );
   narratorStatus.warming = false;
   if (result.text) {
@@ -181,7 +228,18 @@ async function narrate(event, context = {}) {
     achievement: `Achievement unlocked: "${context.achievementName}". Description: ${context.desc}`,
   };
 
-  const aiResponse = await generateNarration(prompts[event] || event);
+  const personaByEvent = {
+    monster_spotted: 'maestro',
+    encounter: 'narrator',
+    victory: 'maestro',
+    loot: 'loot',
+    level_up: 'maestro',
+    achievement: 'maestro',
+  };
+  const aiResponse = await callOllama(
+    prompts[event] || event,
+    personaByEvent[event] || 'narrator'
+  );
   if (aiResponse) return aiResponse;
 
   const fallback = FALLBACKS[event];
@@ -194,10 +252,10 @@ async function narrate(event, context = {}) {
 }
 
 function getNarratorStatus() {
-  return { ...narratorStatus };
+  return { ...narratorStatus, personas: Object.keys(PERSONAS) };
 }
 
 const warmupTimer = setTimeout(warmNarrator, 250);
 warmupTimer.unref();
 
-module.exports = { narrate, getNarratorStatus };
+module.exports = { PERSONAS, callOllama, narrate, getNarratorStatus };
