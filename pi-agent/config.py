@@ -4,6 +4,7 @@ NUC_BASE = f"http://{NUC_HOST}:{NUC_PORT}"
 
 WIFI_INTERFACE = "wlan1"
 WIFI_FALLBACK_INTERFACE = "wlan0"
+HOME_SAFE_SSID = "JuelichHome"
 
 LOCAL_DB = "/home/bjorn/dungeon_state.db"
 

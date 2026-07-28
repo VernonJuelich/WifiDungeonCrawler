@@ -189,6 +189,108 @@ h1 {
   color: #625847;
 }
 
+#expansion-state { padding: 12px; }
+.audience-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 7px;
+}
+.audience-grid > div {
+  padding: 8px 5px;
+  border: 1px solid #c7bda7;
+  border-radius: 4px;
+  background: #f3eddf;
+  text-align: center;
+}
+.audience-grid b {
+  display: block;
+  color: #17633b;
+  font: 700 15px "Dungeon Crawler CB", "Share Tech Mono", monospace;
+}
+.audience-grid span, .sealed-boxes span {
+  display: block;
+  margin-top: 2px;
+  color: #756b59;
+  font-size: 8px;
+  letter-spacing: .7px;
+}
+.floor-rule-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+  padding: 9px 11px;
+  border-left: 4px solid #8f1f1b;
+  background: #eee4d1;
+}
+.floor-rule-card small, .expansion-subhead {
+  display: block;
+  color: #8f1f1b;
+  font: 700 8px "Dungeon Crawler CB", "Share Tech Mono", monospace;
+  letter-spacing: .8px;
+}
+.floor-rule-card > div > b {
+  display: block;
+  margin: 2px 0;
+  color: #302b24;
+}
+.floor-rule-card > div > span { color: #665d4d; font-size: 9px; }
+.sealed-boxes { flex: 0 0 72px; text-align: center; }
+.sealed-boxes b { display: block; color: #8a5a08; font-size: 22px; }
+.box-strip {
+  display: flex;
+  gap: 5px;
+  margin-top: 7px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+.box-strip span {
+  flex: 0 0 auto;
+  padding: 4px 7px;
+  border: 1px solid #bbae92;
+  border-radius: 999px;
+  background: #f7f1e5;
+  color: #5c5243;
+  font-size: 8px;
+  text-transform: uppercase;
+}
+.box-strip span.sealed { border-color: #8a5a08; color: #8a5a08; font-weight: 700; }
+.box-strip span.opened { opacity: .65; }
+.box-strip span.empty { border-style: dashed; }
+.expansion-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 10px;
+}
+.expansion-subhead { margin-bottom: 5px; }
+.sponsor-row, .skill-row {
+  padding: 5px 0;
+  border-top: 1px solid #d2c8b3;
+  font-size: 9px;
+}
+.sponsor-row b { display: block; color: #342f28; }
+.sponsor-row > span { color: #776c59; }
+.skill-row > span { display: flex; justify-content: space-between; gap: 5px; }
+.skill-row b { color: #342f28; }
+.skill-row em { color: #17633b; font-style: normal; }
+.skill-track { height: 4px; margin-top: 3px; background: #d5ccb9; }
+.skill-track i { display: block; height: 100%; background: #17633b; }
+.safe-room-line {
+  margin-top: 9px;
+  padding-top: 7px;
+  border-top: 1px solid #cfc4ae;
+  color: #675e50;
+  font-size: 9px;
+}
+.safe-room-line b { color: #17633b; }
+.safe-room-line.active {
+  color: #17633b;
+  font-weight: 700;
+}
+.empty-state.compact { padding: 8px 0; min-height: 0; }
+
 /* ── LAYOUT ─────────────────────────────────────────────────────────────────── */
 main {
   display: grid;
@@ -1119,18 +1221,19 @@ main {
   }
   .col { display: contents; }
   #quest-panel { order: 1; }
-  #encounter-panel { order: 2; }
-  #controls-panel { order: 3; }
-  #dungeon-map { order: 4; }
-  #character-panel { order: 5; }
-  #donut-panel { order: 6; }
-  #daily-panel { order: 7; }
-  #loot-panel { order: 8; }
-  #system-feed { order: 9; }
-  #world-panel { order: 10; }
-  #history-panel { order: 11; }
-  #achievements-panel { order: 12; }
-  #recap-panel { order: 13; }
+  #expansion-panel { order: 2; }
+  #encounter-panel { order: 3; }
+  #controls-panel { order: 4; }
+  #dungeon-map { order: 5; }
+  #character-panel { order: 6; }
+  #donut-panel { order: 7; }
+  #daily-panel { order: 8; }
+  #loot-panel { order: 9; }
+  #system-feed { order: 10; }
+  #world-panel { order: 11; }
+  #history-panel { order: 12; }
+  #achievements-panel { order: 13; }
+  #recap-panel { order: 14; }
   .monster-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   #event-log, #loot-list, #achievement-list { max-height: 360px; }
 }
@@ -1149,4 +1252,7 @@ main {
   .display-page-buttons { grid-column: 1; grid-template-columns: repeat(2, 1fr); }
   .control-action-grid, .control-settings-grid { grid-template-columns: 1fr; }
   #game-controls select, #game-controls button { font-size: 13px; }
+  .audience-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .audience-grid > div:last-child { grid-column: 1 / -1; }
+  .expansion-columns { grid-template-columns: 1fr; }
 }

@@ -98,13 +98,15 @@ function classifyMonster(network) {
   return { type: 'Unknown Horror', cr: 5, xp: 500 };
 }
 
-function rollLoot(monsterType, ssid) {
+function rollLoot(monsterType, ssid, forcedRarity = null) {
   const roll = Math.random() * 100;
-  let rarity;
-  if (roll < 60) rarity = 'common';
-  else if (roll < 85) rarity = 'uncommon';
-  else if (roll < 97) rarity = 'rare';
-  else rarity = 'legendary';
+  let rarity = forcedRarity;
+  if (!rarity) {
+    if (roll < 60) rarity = 'common';
+    else if (roll < 85) rarity = 'uncommon';
+    else if (roll < 97) rarity = 'rare';
+    else rarity = 'legendary';
+  }
 
   const pool = LOOT_TABLE[rarity];
   let item = pool[Math.floor(Math.random() * pool.length)];

@@ -261,7 +261,8 @@ def _render_battle(state):
         ssid = target.get("ssid") or "[Hidden]"
         hp = int(target.get("hp") or 0)
         max_hp = max(1, int(target.get("max_hp") or 1))
-        boss = "BOSS " if target.get("is_boss") else ""
+        boss_tier = str(target.get("boss_tier") or "").upper()
+        boss = f"{boss_tier} " if target.get("is_boss") and boss_tier else ("BOSS " if target.get("is_boss") else "")
         line1 = f"{boss}{target.get('monster_type', 'Monster')}"
         line2 = ssid
         hp_text = f"{hp} / {max_hp}"
@@ -510,6 +511,7 @@ def _render_page(state, page):
         important_types = {
             "victory", "defeat", "loot", "level_up", "achievement", "town",
             "region", "quest_complete", "daily_complete", "prestige", "offline",
+            "loot_box", "box_opened", "safe_room", "sponsor", "skill_up",
         }
         recent = [
             event for event in events

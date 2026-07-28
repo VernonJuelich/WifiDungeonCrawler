@@ -8,6 +8,7 @@ const battleEngine = require('./battle-engine');
 const { scoreTargets, getModelStats } = require('./ai-targeting');
 const progression = require('./progression-engine');
 const world = require('./world-engine');
+const expansion = require('./expansion-engine');
 
 const app = express();
 const PORT = Number(process.env.PORT || 9310);
@@ -79,8 +80,9 @@ app.post('/api/network', async (req, res) => {
       .run(signal, clients || 0, ssid, ssid || '[Hidden]', encryption, channel,
         vendor || '', bssid);
     world.recordNetwork({ bssid, signal }, false);
+    const safeRoom = expansion.onNetwork({ bssid, ssid, signal, cr }, false);
     world.regionFor(db.prepare("SELECT bssid FROM monsters WHERE last_seen >= datetime('now','-3 minutes')").all());
-    return res.json({ status: 'updated', monsterType, cr });
+    return res.json({ status: safeRoom ? 'safe_room' : 'updated', monsterType, cr, safeRoom });
   }
 
   // New monster!
@@ -89,10 +91,15 @@ app.post('/api/network', async (req, res) => {
     VALUES (?,?,?,?,?,?,?,?,?,?)`)
     .run(bssid, ssid, encryption, signal, channel, vendor || '', monsterType, monsterName, cr, xpValue);
   world.recordNetwork({ bssid, signal }, true);
+  const safeRoom = expansion.onNetwork({ bssid, ssid, signal, cr }, true);
   world.regionFor(db.prepare("SELECT bssid FROM monsters WHERE last_seen >= datetime('now','-3 minutes')").all());
 
   // Respond immediately — narration happens async via SSE
-  res.json({ status: 'new_monster', monsterType, cr, xpValue });
+  res.json({
+    status: safeRoom ? 'safe_room' : 'new_monster',
+    monsterType, cr, xpValue, safeRoom,
+  });
+  if (safeRoom) return;
 
   // Fire-and-forget: narrate + broadcast
   (async () => {
@@ -146,15 +153,17 @@ app.get('/api/state', (req, res) => {
   const events       = db.prepare('SELECT * FROM events ORDER BY created_at DESC LIMIT 30').all();
   const progress     = progression.progressionState();
   const worldState   = world.state();
+  const expansionState = expansion.state();
 
   // Attach AI scores to each monster for dashboard display
-  const scored   = scoreTargets(monsters);
+  const visibleMonsters = monsters.filter(monster => !expansion.isHomeNetwork(monster.ssid));
+  const scored   = scoreTargets(visibleMonsters);
   const scoreMap = Object.fromEntries(scored.map(s => [s.bssid, s.ai_score]));
-  const monstersWithAI = monsters.map(m => ({ ...m, ai_score: scoreMap[m.bssid] ?? null }));
+  const monstersWithAI = visibleMonsters.map(m => ({ ...m, ai_score: scoreMap[m.bssid] ?? null }));
 
   res.json({
     crawler, monsters: monstersWithAI, loot, achievements, events,
-    narrator: getNarratorStatus(), ...progress, ...worldState,
+    narrator: getNarratorStatus(), ...progress, ...worldState, ...expansionState,
   });
 });
 
@@ -184,7 +193,9 @@ app.post('/api/targeting', (req, res) => {
     db.prepare("SELECT bssid FROM monsters WHERE status='dead'").all().map(row => row.bssid)
   );
   res.json({
-    targets: scoreTargets(candidates).filter(candidate => !defeated.has(candidate.bssid)),
+    targets: scoreTargets(candidates).filter(candidate =>
+      !defeated.has(candidate.bssid) && !expansion.isHomeNetwork(candidate.ssid)
+    ),
     model: 'signal-encounter-v1',
   });
 });

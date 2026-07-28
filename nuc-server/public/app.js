@@ -25,6 +25,11 @@ const EVENT_ICONS = {
   quest_complete:  '✓',
   act_up:           '★',
   town:             '🏪',
+  loot_box:         '▣',
+  box_opened:       '◇',
+  safe_room:        '⌂',
+  sponsor:          '★',
+  skill_up:         '↑',
   offline:          '⌛',
   companion:        '🐈',
   daily_complete:   '✓',
@@ -49,8 +54,64 @@ function renderAll() {
   renderLoot(state.loot);
   renderAchievements(state.achievements);
   renderProgression(state);
+  renderExpansion(state);
   renderEncounterQueue(state.monsters);
   renderWorld(state);
+}
+
+function renderExpansion(s) {
+  const el = document.getElementById('expansion-state');
+  if (!el) return;
+  const audience = s.audience || {};
+  const rule = s.floorRule || {};
+  const sponsors = s.sponsors || [];
+  const skills = (s.skills || []).slice(0, 6);
+  const boxes = (s.lootBoxes || []).slice(0, 5);
+  const safe = s.safeRoom || {};
+  el.innerHTML = `
+    <div class="audience-grid">
+      <div><b>${Number(audience.views || 0).toLocaleString()}</b><span>VIEWS</span></div>
+      <div><b>${Number(audience.followers || 0).toLocaleString()}</b><span>FOLLOWERS</span></div>
+      <div><b>${Number(audience.favorites || 0).toLocaleString()}</b><span>FAVORITES</span></div>
+      <div><b>${Number(audience.rating || 0).toLocaleString()}</b><span>RATING</span></div>
+      <div><b>${Number(audience.peak_viewers || 0).toLocaleString()}</b><span>PEAK LIVE</span></div>
+    </div>
+    <div class="floor-rule-card">
+      <div>
+        <small>FLOOR ${rule.floor || 1} RULE</small>
+        <b>${escHtml(rule.name || 'Unspecified Administrative Hazard')}</b>
+        <span>${escHtml(rule.description || '')}</span>
+      </div>
+      <div class="sealed-boxes"><b>${s.sealedBoxes || 0}</b><span>SEALED BOXES</span></div>
+    </div>
+    <div class="box-strip">
+      ${boxes.length ? boxes.map(box => `<span class="${escHtml(box.status)}">
+        ${escHtml(box.tier)} ${escHtml(box.box_type)} · ${escHtml(box.status)}
+      </span>`).join('') : '<span class="empty">No boxes yet. Sponsors are avoiding eye contact.</span>'}
+    </div>
+    <div class="expansion-columns">
+      <div>
+        <div class="expansion-subhead">SPONSORS</div>
+        ${sponsors.length ? sponsors.map(sponsor => `
+          <div class="sponsor-row">
+            <b>${escHtml(sponsor.name)}</b>
+            <span>FAVOR ${sponsor.favor || 0} · ${sponsor.boxes_sent || 0} BOXES</span>
+          </div>`).join('') : '<div class="empty-state compact">Unlocks on Floor 4. Fame remains pending.</div>'}
+      </div>
+      <div>
+        <div class="expansion-subhead">TRAINED SKILLS</div>
+        ${skills.map(skill => {
+          const pct = Math.min(100, Number(skill.xp || 0) / Math.max(1, Number(skill.xp_next || 1)) * 100);
+          return `<div class="skill-row">
+            <span><b>${escHtml(skill.name)}</b><em>LV ${skill.level}</em></span>
+            <div class="skill-track"><i style="width:${pct}%"></i></div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+    <div class="safe-room-line ${safe.active ? 'active' : ''}">⌂ HOME SAFE ROOM:
+      <b>${escHtml(safe.ssid || 'NOT CONFIGURED')}</b> · ${safe.active ? 'IN RANGE' : 'OUT OF RANGE'}
+      · boxes open automatically on arrival or during town trips</div>`;
 }
 
 function renderAnnouncerCommentary(s) {
@@ -150,7 +211,7 @@ function renderWorld(s) {
     ? `<div class="threat-heading">KNOWN PROBLEMS CARL HAS NOT SOLVED</div>
       <div class="threat-grid">${notable.map(m =>
         `<div class="threat-card ${String(m.tag).toLowerCase()}">
-          <div class="threat-tag">${m.tag}</div>
+          <div class="threat-tag">${escHtml(m.boss_tier ? `${m.boss_tier.toUpperCase()} BOSS` : m.tag)}</div>
           <div class="threat-name">${escHtml(m.lore_title || m.monster_name || m.ssid || 'Unnamed Liability')}</div>
           <div class="threat-meta">
             <span>CR ${m.cr || '?'}</span>

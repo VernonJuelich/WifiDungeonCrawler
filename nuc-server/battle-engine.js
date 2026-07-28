@@ -4,6 +4,7 @@ const { rollLoot, addXP, checkAchievements, logEvent } = require('./game-engine'
 const { narrate } = require('./narrator');
 const progression = require('./progression-engine');
 const world = require('./world-engine');
+const expansion = require('./expansion-engine');
 
 let eventEmitter = null;
 const FLOOR_KILLS = 5;
@@ -52,10 +53,14 @@ function ensureMonsterStats(monster, crawler) {
   const loreTitle = isBoss
     ? `${monster.ssid || 'The Hidden One'}, ${titles[seededByte(monster.bssid, 'title') % titles.length]}`
     : monster.lore_title;
+  const bossTier = expansion.bossTierFor(monster, crawler, isBoss);
   db.prepare(`
-    UPDATE monsters SET hp=?, max_hp=?, is_boss=?, room_id=?,lore_title=? WHERE bssid=?
-  `).run(hp, maxHp, isBoss ? 1 : 0, roomId, loreTitle, monster.bssid);
-  return { ...monster, hp, max_hp: maxHp, is_boss: isBoss ? 1 : 0, room_id: roomId, lore_title: loreTitle };
+    UPDATE monsters SET hp=?,max_hp=?,is_boss=?,room_id=?,lore_title=?,boss_tier=? WHERE bssid=?
+  `).run(hp, maxHp, isBoss ? 1 : 0, roomId, loreTitle, bossTier, monster.bssid);
+  return {
+    ...monster, hp, max_hp: maxHp, is_boss: isBoss ? 1 : 0,
+    room_id: roomId, lore_title: loreTitle, boss_tier: bossTier,
+  };
 }
 
 function moodFor({ victory = false, defeated = false, critical = false, stamina, isBoss, signal }) {
@@ -80,6 +85,8 @@ async function advanceEncounter(bssid, signal, dwellSeconds = 0) {
   if (crawler.paused) return { status: 'paused', crawler };
   let monster = db.prepare('SELECT * FROM monsters WHERE bssid=?').get(bssid);
   if (!monster) return { error: 'monster_not_found' };
+  const safeRoom = expansion.enterSafeRoom(monster.ssid);
+  if (safeRoom) return safeRoom;
   monster = ensureMonsterStats(monster, crawler);
 
   if (monster.status === 'dead') {
@@ -97,28 +104,36 @@ async function advanceEncounter(bssid, signal, dwellSeconds = 0) {
   const turn = Math.max(monster.dwell_seconds || 0, Number(dwellSeconds || 0));
   const roll = seededByte(bssid, turn, crawler.kills);
   const closeness = clamp(100 + Number(signal || -90), 5, 55);
+  const skills = expansion.skillBonuses();
+  const floorRule = expansion.currentFloorRule(crawler.floor);
   const difficultyAccuracy = crawler.difficulty === 'relaxed' ? 8 : crawler.difficulty === 'brutal' ? -7 : 0;
-  const accuracy = clamp(55 + closeness * 0.7 + crawler.level + difficultyAccuracy, 45, 98);
+  const accuracy = clamp(
+    55 + closeness * 0.7 + crawler.level + difficultyAccuracy + skills.accuracy + floorRule.accuracy,
+    45, 98
+  );
   const hit = (roll % 100) < accuracy;
-  const critical = hit && ((roll >> 2) % 100) < (10 + Math.floor(closeness / 5));
+  const critical = hit && ((roll >> 2) % 100)
+    < (10 + Math.floor(closeness / 5) + skills.criticalChance);
   const nightBonus = isNight() ? 2 : 0;
   let damage = 0;
   if (hit) {
-    damage = 4 + crawler.level + crawler.weapon_power + Math.floor(closeness / 8) + nightBonus;
+    damage = 4 + crawler.level + crawler.weapon_power + Math.floor(closeness / 8)
+      + nightBonus + floorRule.damage + (closeness >= 40 ? skills.closeDamage : 0);
     if (critical) damage *= 2;
   }
 
   // Staying close to a boss charges a periodic special attack.
   const bossCharge = monster.is_boss && dwellSeconds >= 60;
-  if (bossCharge) damage += 20 + crawler.level * 2;
+  if (bossCharge) damage += 20 + crawler.level * 2 + skills.chargeDamage;
 
   const hp = Math.max(0, monster.hp - damage);
-  const stamina = Math.max(0, crawler.stamina - (critical ? 10 : 8));
+  const stamina = Math.max(0, crawler.stamina - (critical ? 10 : 8) - floorRule.stamina);
   const enemyRoll = seededByte(bssid, turn, 'counter');
   const enemyHits = hp > 0 && enemyRoll % 100 < clamp(35 + monster.cr * 2, 35, 78);
   const difficultyDamage = crawler.difficulty === 'relaxed' ? -2 : crawler.difficulty === 'brutal' ? 3 : 0;
   const enemyDamage = enemyHits
-    ? Math.max(1, 2 + Math.floor(monster.cr / 2) + (monster.is_boss ? 4 : 0) + difficultyDamage - crawler.armor_power)
+    ? Math.max(1, 2 + Math.floor(monster.cr / 2) + (monster.is_boss ? 4 : 0)
+      + difficultyDamage + floorRule.enemyDamage - crawler.armor_power - skills.damageReduction)
     : 0;
   const crawlerHealth = Math.max(0, crawler.health - enemyDamage);
   const defeated = crawlerHealth <= 0;
@@ -144,7 +159,9 @@ async function advanceEncounter(bssid, signal, dwellSeconds = 0) {
     signal, dwellSeconds: turn,
     crawlerHealth, crawlerMaxHealth: crawler.max_health,
     stamina, maxStamina: crawler.max_stamina, mood,
+    cr: monster.cr, bossTier: monster.boss_tier, floorRule: floorRule.name,
   };
+  expansion.onBattle(event);
   const companion = world.onBattle(monster, event);
   if (companion) event.companion = companion;
 
@@ -166,6 +183,7 @@ async function advanceEncounter(bssid, signal, dwellSeconds = 0) {
     logEvent('defeat', message, event);
     broadcast('event', { ...event, type: 'defeat', message });
     world.onDefeat(monster);
+    expansion.onDefeat(event);
     return { status: 'defeat', ...event };
   }
 
@@ -190,7 +208,8 @@ async function handleVictory(monster, battle) {
   `).run(monster.bssid);
   db.prepare('UPDATE crawler SET kills=kills+1 WHERE id=1').run();
 
-  const xpGain = monster.xp_value || 200;
+  const floorRule = expansion.currentFloorRule(db.prepare('SELECT floor FROM crawler WHERE id=1').get().floor);
+  const xpGain = Math.max(1, Math.round((monster.xp_value || 200) * floorRule.xp));
   const { level, leveled } = addXP(xpGain);
   const crawler = db.prepare('SELECT * FROM crawler WHERE id=1').get();
   const newFloor = Math.floor(crawler.kills / FLOOR_KILLS) + 1;
@@ -258,6 +277,7 @@ async function handleVictory(monster, battle) {
     broadcast('event', { type: 'town', ...town, theft });
   }
   world.onVictory(monster, item);
+  const expansionRewards = expansion.onVictory(monster);
   progression.snapshot();
 
   for (const code of [
@@ -276,7 +296,10 @@ async function handleVictory(monster, battle) {
     broadcast('event', { type: 'achievement', message: achievementMessage, achievement });
   }
 
-  return { xp: xpGain, item, floor: newFloor, quest: questResult.quest, town };
+  return {
+    xp: xpGain, item, floor: newFloor, quest: questResult.quest, town,
+    box: expansionRewards.box, benefactor: expansionRewards.benefactor,
+  };
 }
 
 module.exports = { setEmitter, advanceEncounter };

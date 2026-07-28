@@ -168,6 +168,7 @@ for (const [name, definition] of [
   ['lore_title', "TEXT DEFAULT ''"],
   ['nemesis', 'INTEGER DEFAULT 0'],
   ['region_id', "TEXT DEFAULT ''"],
+  ['boss_tier', "TEXT DEFAULT ''"],
 ]) {
   if (!monsterColumns.has(name)) db.exec(`ALTER TABLE monsters ADD COLUMN ${name} ${definition}`);
 }
@@ -221,7 +222,66 @@ db.exec(`
     data TEXT,
     created_at TEXT DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS audience (
+    id INTEGER PRIMARY KEY,
+    views INTEGER DEFAULT 0,
+    followers INTEGER DEFAULT 0,
+    favorites INTEGER DEFAULT 0,
+    rating INTEGER DEFAULT 0,
+    peak_viewers INTEGER DEFAULT 0,
+    last_event TEXT,
+    updated_at TEXT DEFAULT (datetime('now'))
+  );
+  INSERT OR IGNORE INTO audience (id) VALUES (1);
+
+  CREATE TABLE IF NOT EXISTS loot_boxes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    box_type TEXT DEFAULT 'Adventurer',
+    tier TEXT DEFAULT 'Bronze',
+    source TEXT,
+    monster_bssid TEXT,
+    status TEXT DEFAULT 'sealed',
+    contents TEXT,
+    acquired_at TEXT DEFAULT (datetime('now')),
+    opened_at TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS skills (
+    code TEXT PRIMARY KEY,
+    name TEXT,
+    description TEXT,
+    level INTEGER DEFAULT 1,
+    xp INTEGER DEFAULT 0,
+    xp_next INTEGER DEFAULT 20,
+    trained_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS sponsors (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT UNIQUE,
+    name TEXT,
+    floor_unlocked INTEGER,
+    favor INTEGER DEFAULT 0,
+    boxes_sent INTEGER DEFAULT 0,
+    active INTEGER DEFAULT 1,
+    joined_at TEXT DEFAULT (datetime('now'))
+  );
 `);
+
+for (const [code, name, description] of [
+  ['signal_sense', 'Signal Sense', 'Improves accuracy against distant monsters.'],
+  ['close_quarters', 'Close Quarters', 'Adds damage when signal strength is high.'],
+  ['stalking', 'Patient Stalking', 'Strengthens charged attacks after remaining nearby.'],
+  ['critical_negotiation', 'Critical Negotiation', 'Raises critical-hit chance.'],
+  ['improvised_armor', 'Improvised Armor', 'Reduces incoming monster damage.'],
+  ['tactical_retreat', 'Tactical Retreat', 'Improves recovery after a defeat.'],
+  ['donut_diplomacy', 'Donut Diplomacy', 'Improves companion help and loot appraisal.'],
+  ['cartography', 'Questionable Cartography', 'Rewards discovery of rooms and regions.'],
+]) {
+  db.prepare('INSERT OR IGNORE INTO skills (code,name,description) VALUES (?,?,?)')
+    .run(code, name, description);
+}
 
 // Existing saves already have levels; grant the base stats those levels earned.
 db.exec(`

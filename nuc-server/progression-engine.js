@@ -1,5 +1,6 @@
 const db = require('./db');
 const { addXP } = require('./game-engine');
+const expansion = require('./expansion-engine');
 const TOWN_INTERVAL_SECONDS = 2 * 60 * 60;
 
 const QUEST_ADJECTIVES = [
@@ -94,8 +95,10 @@ function visitTownIfNeeded(force = false) {
   `).run(sale.gold, upgrade ? upgradeCost : 0, weapon, armor);
   const purchase = upgrade ? (weapon ? 'weapon polishing' : 'armor tailoring') : 'absolutely nothing useful';
   const message = `Town trip: sold ${sale.count} items for ${sale.gold} gold and purchased ${purchase}.`;
-  record('town', message, { sold: sale.count, gold: sale.gold, purchase });
-  return { message, sold: sale.count, gold: sale.gold, purchase };
+  const opened = expansion.openSealedBoxes('town guild hall');
+  expansion.evaluateSponsors();
+  record('town', message, { sold: sale.count, gold: sale.gold, purchase, boxesOpened: opened.length });
+  return { message, sold: sale.count, gold: sale.gold, purchase, opened };
 }
 
 function visitTownIfDue() {
