@@ -191,11 +191,11 @@ def _render(state):
     if target:
         ssid = target.get("ssid") or "[Hidden]"
         hp = int(target.get("hp") or 0)
-        max_hp = int(target.get("max_hp") or 0)
+        max_hp = max(1, int(target.get("max_hp") or 1))
         boss = "BOSS " if target.get("is_boss") else ""
         line1 = f"{boss}{target.get('monster_type', 'Monster')}"
         line2 = ssid
-        hp_text = f"{hp} / {max_hp}" if max_hp > 0 else "READY"
+        hp_text = f"{hp} / {max_hp}"
     else:
         line1, line2 = "SCANNING THE DUNGEON", "No monster in range"
         hp_text = ""
@@ -208,9 +208,8 @@ def _render(state):
     encounter_pct = 0 if not target or target_max_hp <= 0 else (
         1 - int(target.get("hp") or 0) / target_max_hp
     )
-    if target_max_hp > 0:
-        draw.rectangle((3, 72, W - 4, 74), outline=0)
-        draw.line((4, 73, 4 + int((W - 9) * max(0, min(1, encounter_pct))), 73), fill=0)
+    draw.rectangle((3, 72, W - 4, 74), outline=0)
+    draw.line((4, 73, 4 + int((W - 9) * max(0, min(1, encounter_pct))), 73), fill=0)
 
     portrait = _character_frame(target, events, bool(monsters))
     _paste_center(image, portrait, 77)
@@ -234,13 +233,9 @@ def _render(state):
     draw.rectangle((78, 181, W - 4, 186), outline=0)
     draw.rectangle((79, 182, 79 + int((W - 84) * stamina / max_stamina), 185), fill=0)
     quest = state.get("quest") or {}
-    quest_progress = int(quest.get("progress") or 0)
-    quest_required = max(1, int(quest.get("required") or 1))
-    quest_pct = quest_progress / quest_required
-    draw.text((3, 189), "QUEST", font=tiny, fill=0)
-    draw.text((29, 189), f"{quest_progress}/{quest_required}", font=tiny, fill=0)
-    draw.rectangle((49, 191, W - 4, 193), outline=0)
-    draw.line((50, 192, 50 + int((W - 55) * max(0, min(1, quest_pct))), 192), fill=0)
+    quest_pct = int(quest.get("progress") or 0) / max(1, int(quest.get("required") or 1))
+    draw.rectangle((3, 190, W - 4, 192), outline=0)
+    draw.line((4, 191, 4 + int((W - 9) * max(0, min(1, quest_pct))), 191), fill=0)
     message = ""
     for event in events:
         if event.get("message"):
@@ -253,7 +248,7 @@ def _render(state):
         if message.upper().startswith(prefix):
             message = message[len(prefix):].strip()
             break
-    y = 198
+    y = 196
     for line in _wrap(message, tiny, W - 14, 5):
         draw.text((4, y), line, font=tiny, fill=0)
         y += 10
