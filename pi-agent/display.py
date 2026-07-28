@@ -223,13 +223,41 @@ def _render_battle(state):
         hp_text = f"{hp} / {max_hp}"
     elif page == "loot":
         loot = state.get("loot") or []
-        rows = ["AUTOMATIC EQUIPMENT"]
-        for item in loot[:7]:
-            equipped = "*" if item.get("equipped") else "-"
-            rows.append(f"{equipped} {str(item.get('rarity','')).upper()}")
-            rows.append(item.get("item_name") or "Questionable object")
-        if not loot:
-            rows += ["Inventory empty.", "Donut blames Carl."]
+        inventory = state.get("inventory") or {}
+        frames = glob.glob(f"{CHARACTER_ROOT}/looting/*.bmp")
+        if frames:
+            try:
+                portrait = Image.open(frames[0]).convert("1")
+                portrait.thumbnail((105, 82), Image.Resampling.LANCZOS)
+                _paste_center(image, portrait, 24)
+            except Exception:
+                pass
+        draw.line((3, 110, W - 4, 110), fill=0)
+        inv_text = f"BAG {inventory.get('count', len(loot))}/{inventory.get('capacity', crawler.get('inventory_capacity', 10))}"
+        gold_text = f"GOLD {crawler.get('gold', 0)}"
+        draw.text((4, 115), inv_text, font=body, fill=0)
+        draw.text((W - body.getlength(gold_text) - 4, 115), gold_text, font=body, fill=0)
+
+        weapon = next((item for item in loot if item.get("equipped") and item.get("power", 0)), None)
+        armor = next((item for item in loot if item.get("equipped") and item.get("defense", 0)), None)
+        draw.text((4, 132), f"WEAPON +{crawler.get('weapon_power', 0)}", font=tiny, fill=0)
+        draw.text((4, 142), _fit((weapon or {}).get("item_name") or "Barely armed", tiny, W - 8, True), font=tiny, fill=0)
+        draw.text((4, 156), f"ARMOR +{crawler.get('armor_power', 0)}", font=tiny, fill=0)
+        draw.text((4, 166), _fit((armor or {}).get("item_name") or "Optimistic clothing", tiny, W - 8, True), font=tiny, fill=0)
+
+        draw.line((3, 180, W - 4, 180), fill=0)
+        latest = loot[0] if loot else None
+        if latest:
+            rarity = str(latest.get("rarity") or "common").upper()
+            draw.text((4, 185), f"LATEST DROP · {rarity}", font=tiny, fill=0)
+            y = 197
+            for line in _wrap(latest.get("item_name") or "Questionable object", body, W - 10, 3):
+                draw.text((4, y), line, font=body, fill=0)
+                y += 12
+        else:
+            draw.text((4, 190), "INVENTORY EMPTY", font=bold, fill=0)
+            draw.text((4, 206), "Donut blames Carl.", font=body, fill=0)
+        return image
     else:
         line1, line2 = "SCANNING THE DUNGEON", "No monster in range"
         hp_text = ""
