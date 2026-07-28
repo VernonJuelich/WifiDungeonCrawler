@@ -528,3 +528,342 @@ main {
   .sheet-grid { grid-template-columns: 1fr auto 1fr auto; }
   .subtitle { letter-spacing: 1px; }
 }
+
+/* ── READABLE DUNGEON DOSSIER REDESIGN ────────────────────────────────────── */
+:root {
+  --bg: #171613;
+  --bg2: #f3eedf;
+  --bg3: #e7dfca;
+  --border: #aaa087;
+  --accent: #7b241c;
+  --accent2: #9c3d2e;
+  --gold: #8a5a08;
+  --green: #17633b;
+  --red: #a32620;
+  --text: #211f1a;
+  --text-dim: #625c50;
+  --common: #625c50;
+  --uncommon: #267347;
+  --rare: #245d91;
+  --legendary: #9b4b12;
+  --epic: #713f78;
+}
+
+body {
+  background:
+    radial-gradient(circle at 15% 0%, rgba(255,255,255,.07), transparent 28rem),
+    #171613;
+  color: var(--text);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+#scanlines { display: none; }
+
+header {
+  padding: 18px clamp(16px, 3vw, 42px);
+  background: #211f1a;
+  border-bottom: 5px solid #a87b2d;
+  box-shadow: 0 5px 20px rgba(0,0,0,.35);
+  gap: 28px;
+}
+
+.system-tag {
+  color: #d6ad59;
+  font: 700 11px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace;
+  letter-spacing: 2px;
+}
+
+h1 {
+  color: #fff7df;
+  font: 800 clamp(24px, 3vw, 38px)/1.05 Georgia, serif;
+  letter-spacing: 1px;
+  text-shadow: none;
+}
+
+.subtitle {
+  color: #d2cab8;
+  font: 600 11px/1.4 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 1px;
+  margin-top: 5px;
+}
+
+.header-right { gap: 9px; }
+.crawler-hud { gap: 8px; }
+
+.stat-box {
+  min-width: 78px;
+  padding: 8px 13px;
+  background: #302d26;
+  border: 1px solid #5e5749;
+  border-radius: 7px;
+}
+
+.stat-label, .xp-label {
+  color: #cfc5af;
+  font: 700 10px/1.2 ui-sans-serif, system-ui, sans-serif;
+}
+
+.stat-value {
+  color: #fff7df;
+  font-size: 18px;
+  line-height: 1.25;
+}
+
+#crawler-name-box:hover { border-color: #d6ad59; }
+.name-input { color: #fff7df; border-color: #d6ad59; font-family: inherit; }
+
+.xp-track {
+  height: 20px;
+  min-width: 240px;
+  background: #39352d;
+  border-color: #645c4d;
+  border-radius: 6px;
+}
+
+.xp-fill {
+  background: linear-gradient(90deg, #9a3529, #d29b35);
+  box-shadow: none;
+}
+
+#health-fill { background: linear-gradient(90deg, #17633b, #53a46d); }
+
+.xp-track-label {
+  color: #fff;
+  font: 700 11px/18px ui-sans-serif, system-ui, sans-serif;
+  text-shadow: 0 1px 2px #000;
+}
+
+#announcement-bar {
+  background: #7b241c;
+  color: #fff;
+  font-weight: 700;
+}
+
+main {
+  width: min(1760px, 100%);
+  margin: 0 auto;
+  grid-template-columns: 280px minmax(560px, 1fr) 360px;
+  gap: 18px;
+  padding: 22px;
+}
+
+.col { gap: 18px; }
+
+.panel {
+  background: var(--bg2);
+  border: 1px solid #b8ad93;
+  border-radius: 9px;
+  box-shadow: 0 6px 18px rgba(0,0,0,.22);
+}
+
+.panel-header {
+  padding: 10px 14px;
+  background: #312d26;
+  border-bottom: 3px solid #a87b2d;
+  color: #fff7df;
+  font: 800 12px/1.3 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: .8px;
+}
+
+#character-sheet, #quest-card { padding: 16px; }
+#donut-card, #daily-quests, #weekly-recap, #boss-list { padding: 14px; }
+
+.sheet-grid {
+  gap: 9px 12px;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+.sheet-grid b { color: #174e32; font-size: 13px; }
+
+.donut-name, .quest-title {
+  color: #68251f;
+  font-family: Georgia, serif;
+}
+.donut-name { font-size: 16px; }
+.quest-title { font-size: 18px; line-height: 1.25; }
+.donut-mood, .micro-stats, .quest-desc, .daily-item small {
+  color: var(--text-dim);
+}
+.quest-desc { font-size: 13px; line-height: 1.5; }
+.quest-reward { color: #17633b; font-size: 11px; font-weight: 800; }
+
+.progress-track {
+  height: 22px;
+  border-color: #978d76;
+  background: #d8cfb9;
+  border-radius: 5px;
+}
+.progress-fill { background: linear-gradient(90deg, #8f2d24, #c78b27); }
+.progress-track span {
+  color: #fff;
+  font: 800 11px/20px ui-sans-serif, system-ui, sans-serif;
+  text-shadow: 0 1px 2px #000;
+}
+
+.daily-item {
+  padding: 10px 0;
+  border-color: #c7bda5;
+  font-size: 12px;
+}
+.daily-item b { color: #29261f; }
+.daily-item > span { color: #6f281f; font-weight: 800; }
+
+.achievement-item, .loot-item, .encounter-item {
+  background: #fffaf0;
+  border-radius: 6px;
+}
+.achievement-item { border-color: #9b772e; padding: 10px 12px; }
+.achievement-name { color: #68251f; font-weight: 800; }
+.achievement-desc, .loot-flavor { color: #625c50; font-size: 12px; }
+
+.monster-grid {
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 12px;
+  padding: 14px;
+}
+
+.monster-card {
+  padding: 15px 12px 12px;
+  background: #fffaf0;
+  border: 1px solid #b9ae96;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(50,42,28,.08);
+}
+.monster-card:hover {
+  border-color: #7b241c;
+  box-shadow: 0 5px 14px rgba(75,43,30,.18);
+}
+.monster-card.dead { opacity: .62; }
+.monster-name { color: #211f1a; font-size: 14px; font-weight: 800; }
+.monster-type { color: #7b241c; font-size: 10px; font-weight: 800; }
+.monster-cr { color: #6d4b0d; font-weight: 800; }
+.monster-enc, .monster-ch, .monster-meta { color: #625c50; }
+
+.map-field {
+  background: #fffaf0;
+  border-color: #b8ad93;
+}
+.map-node { color: #7b241c; }
+.map-node span { color: #4f4a40; }
+.notable-monster { border-color: #c7bda5; }
+.notable-monster b { color: #8c211c; }
+.notable-monster span { color: #625c50; }
+
+#event-log { height: 360px; gap: 7px; padding: 12px; }
+.event-entry {
+  grid-template-columns: 22px 58px 1fr;
+  gap: 7px;
+  padding: 8px 9px;
+  background: #fffaf0;
+  border-left-width: 4px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.event-time { color: #6f685b; font-size: 11px; }
+.event-msg, .event-entry.loot .event-msg { color: #26231d; }
+.event-entry.system-boot .event-msg { color: #625c50; }
+
+#loot-list { max-height: 300px; gap: 8px; padding: 12px; }
+.loot-item { padding: 9px 12px; font-size: 13px; }
+.loot-name { color: #211f1a; font-weight: 750; }
+.loot-rarity { color: #625c50; font-weight: 800; }
+
+#encounter-queue { max-height: 180px; padding: 12px; gap: 8px; }
+.encounter-item { padding: 10px 12px; font-size: 13px; }
+.encounter-title { color: #68251f; font-weight: 800; }
+
+#game-controls {
+  padding: 14px;
+  gap: 9px;
+}
+#game-controls button, #game-controls select {
+  min-height: 42px;
+  padding: 9px;
+  background: #fffaf0;
+  color: #211f1a;
+  border: 1px solid #827761;
+  border-radius: 6px;
+  font: 750 12px ui-sans-serif, system-ui, sans-serif;
+}
+#game-controls button:hover {
+  color: #fff;
+  border-color: #68251f;
+  background: #68251f;
+}
+.display-page-buttons button.active {
+  color: #fff;
+  border-color: #68251f;
+  background: #68251f;
+}
+#game-controls .danger-button { color: #8c211c; border-color: #8c211c; }
+
+#weekly-recap {
+  color: #312d26;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.empty-dungeon, .empty-state { color: #625c50; font-size: 13px; }
+
+#achievement-popup, #loot-popup {
+  background: #fffaf0;
+  border-color: #8a5a08;
+  box-shadow: 0 12px 34px rgba(0,0,0,.35);
+}
+.popup-tag { color: #68251f; }
+#popup-name, #loot-popup-name { color: #211f1a; }
+#popup-desc, #loot-popup-flavor { color: #625c50; }
+
+@media (max-width: 1180px) {
+  main {
+    grid-template-columns: minmax(0, 1fr) 340px;
+  }
+  .col-center { grid-column: 1; grid-row: 1 / span 2; }
+  .col-left { grid-column: 2; grid-row: 1; }
+  .col-right { grid-column: 2; grid-row: 2; }
+}
+
+@media (max-width: 900px) {
+  body { font-size: 14px; }
+  header { padding: 14px 12px; }
+  h1 { font-size: 26px; }
+  main {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    padding: 10px;
+    gap: 10px;
+  }
+  .col { display: contents; }
+  #quest-panel { order: 1; }
+  #encounter-panel { order: 2; }
+  #controls-panel { order: 3; }
+  #dungeon-map { order: 4; }
+  #character-panel { order: 5; }
+  #donut-panel { order: 6; }
+  #daily-panel { order: 7; }
+  #loot-panel { order: 8; }
+  #system-feed { order: 9; }
+  #world-panel { order: 10; }
+  #history-panel { order: 11; }
+  #achievements-panel { order: 12; }
+  #recap-panel { order: 13; }
+  .monster-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #event-log, #loot-list, #achievement-list { max-height: 360px; }
+}
+
+@media (max-width: 520px) {
+  h1 { font-size: 22px; }
+  .subtitle { font-size: 10px; }
+  .crawler-hud { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stat-box { min-width: 0; }
+  .xp-track { min-width: 0; }
+  .monster-grid { grid-template-columns: 1fr; }
+  .monster-icon-wrap { height: 86px; }
+  .monster-icon { width: 82px; height: 82px; }
+  #game-controls { grid-template-columns: 1fr; }
+  .display-page-buttons { grid-column: 1; grid-template-columns: repeat(3, 1fr); }
+  #game-controls select, #game-controls button { font-size: 13px; }
+}

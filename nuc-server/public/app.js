@@ -72,8 +72,11 @@ function renderWorld(s) {
 
   const map = s.map || [];
   document.getElementById('world-map').innerHTML = map.length
-    ? `<div class="map-field">${map.map((r, i) => `<div class="map-node" style="left:${5 + r.x * .88}%;top:${8 + r.y * .72}%"
-        title="${escHtml(r.name)}">${i === 0 ? '◆' : '◇'}<span>${escHtml(r.name)}</span></div>`).join('')}</div>`
+    ? `<div class="map-field">${map.map((r, i) => {
+        const regionName = String(r.name || 'Unmapped Region').replace(/\bundefined\b/gi, 'Dead Zone');
+        return `<div class="map-node" style="left:${5 + r.x * .88}%;top:${8 + r.y * .72}%"
+          title="${escHtml(regionName)}">${i === 0 ? '◆' : '◇'}<span>${escHtml(regionName)}</span></div>`;
+      }).join('')}</div>`
     : '<div class="empty-state">Walk somewhere. Geography refuses to generate itself.</div>';
 
   const notable = [...(s.nemeses || []).map(m => ({ ...m, tag: 'NEMESIS' })),
@@ -325,13 +328,13 @@ function renderHistory(history) {
   ctx.scale(devicePixelRatio, devicePixelRatio);
   const w = canvas.width / devicePixelRatio, h = 130;
   ctx.clearRect(0, 0, w, h);
-  ctx.strokeStyle = '#2a1f4a'; ctx.strokeRect(8, 8, w - 16, h - 24);
+  ctx.strokeStyle = '#aaa087'; ctx.strokeRect(8, 8, w - 16, h - 24);
   if (history.length < 2) {
-    ctx.fillStyle = '#6a5a8a'; ctx.font = '11px monospace';
+    ctx.fillStyle = '#625c50'; ctx.font = '11px sans-serif';
     ctx.fillText('History begins after the next victory.', 16, 68); return;
   }
   const series = [
-    ['level', '#00ff88'], ['kills', '#ffd700'], ['gold', '#ff2f7b'],
+    ['level', '#17633b'], ['kills', '#8a5a08'], ['gold', '#7b241c'],
   ];
   for (const [key, color] of series) {
     const max = Math.max(1, ...history.map(x => Number(x[key] || 0)));
@@ -343,10 +346,10 @@ function renderHistory(history) {
     });
     ctx.stroke();
   }
-  ctx.font = '9px monospace';
-  ctx.fillStyle = '#00ff88'; ctx.fillText('LEVEL', 10, 127);
-  ctx.fillStyle = '#ffd700'; ctx.fillText('KILLS', 60, 127);
-  ctx.fillStyle = '#ff2f7b'; ctx.fillText('GOLD', 105, 127);
+  ctx.font = '700 9px sans-serif';
+  ctx.fillStyle = '#17633b'; ctx.fillText('LEVEL', 10, 127);
+  ctx.fillStyle = '#8a5a08'; ctx.fillText('KILLS', 60, 127);
+  ctx.fillStyle = '#7b241c'; ctx.fillText('GOLD', 105, 127);
 }
 
 // ── Popups ────────────────────────────────────────────────────────────────────
