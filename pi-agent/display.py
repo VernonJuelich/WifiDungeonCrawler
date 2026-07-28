@@ -15,6 +15,7 @@ from config import NUC_BASE
 W, H = 122, 250
 UPDATE_SEC = 30
 ASSET_ROOT = "/home/bjorn/Bjorn/resources/images/static"
+CHARACTER_ROOT = "/home/bjorn/dungeon/assets/characters"
 
 QUIPS = [
     "The audience demands battle.",
@@ -109,32 +110,26 @@ def _paste_center(canvas, image, y):
         canvas.paste(image, ((W - image.width) // 2, y))
 
 
-def _character_frame(target, events, has_monsters):
-    """Rotate Bjorn artwork by game state, Ragnar-style."""
+def _character_frame(target, events, has_monsters, crawler):
+    """Rotate the user-curated Bjorn artwork by zero-player game state."""
     latest_type = (events[0].get("type") if events else "") or ""
     hour = time.localtime().tm_hour
-    if hour < 6 or hour >= 22:
-        folders = ("IDLE",)
-    elif latest_type in ("victory", "loot"):
-        folders = ("NetworkScanner", "IDLE")
-    elif target and target.get("status") == "engaged":
-        folders = ("NetworkScanner",)
-    elif has_monsters:
-        folders = ("NetworkScanner", "IDLE")
-    else:
-        folders = ("IDLE",)
+    health = int(crawler.get("health") or 0)
+    max_health = max(1, int(crawler.get("max_health") or 100))
+    stamina = int(crawler.get("stamina") or 0)
 
-    frames = []
-    for folder in folders:
-        candidates = glob.glob(
-            f"/home/bjorn/Bjorn/resources/images/status/{folder}/*.bmp"
-        )
-        # The unnumbered BMP in each status folder is a placeholder/icon,
-        # not a full Bjorn animation frame.
-        frames.extend(sorted(
-            path for path in candidates
-            if os.path.splitext(os.path.basename(path))[0][-1:].isdigit()
-        ))
+    if latest_type == "town":
+        group = "shopping"
+    elif latest_type == "defeat" or health < max_health * 0.35:
+        group = "healing"
+    elif stamina < 20 or hour < 6 or hour >= 22:
+        group = "resting"
+    elif target and target.get("status") == "engaged":
+        group = "attacking"
+    else:
+        group = "idle"
+
+    frames = sorted(glob.glob(f"{CHARACTER_ROOT}/{group}/*.bmp"))
 
     if frames:
         frame_path = frames[int(time.time() // UPDATE_SEC) % len(frames)]
@@ -204,7 +199,7 @@ def _render(state):
     if hp_text:
         draw.text((W - hp_width - 4, 58), hp_text, font=body, fill=0)
 
-    portrait = _character_frame(target, events, bool(monsters))
+    portrait = _character_frame(target, events, bool(monsters), crawler)
     _paste_center(image, portrait, 68)
 
     name = crawler.get("name") or "Carl"
