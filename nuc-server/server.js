@@ -12,6 +12,24 @@ const world = require('./world-engine');
 const app = express();
 const PORT = Number(process.env.PORT || 9310);
 
+function cleanSsid(value) {
+  const ssid = String(value || '')
+    .replace(/(?:\\x0{1,2})+/gi, '')
+    .replace(/\0/g, '')
+    .replace(/[\u0001-\u001f\u007f]/g, '')
+    .trim();
+  return !ssid || ssid === '--' ? '' : ssid;
+}
+
+// Repair malformed blank SSIDs previously reported by some USB WiFi drivers.
+for (const monster of db.prepare('SELECT bssid,ssid FROM monsters').all()) {
+  const cleaned = cleanSsid(monster.ssid);
+  if (cleaned !== String(monster.ssid || '')) {
+    db.prepare('UPDATE monsters SET ssid=?,monster_name=? WHERE bssid=?')
+      .run(cleaned, cleaned || '[Hidden]', monster.bssid);
+  }
+}
+
 // SSE event bus
 const bus = new EventEmitter();
 bus.setMaxListeners(50);
@@ -48,15 +66,18 @@ app.get('/events', (req, res) => {
 
 // POST /api/network  — Pi reports a network it sees
 app.post('/api/network', async (req, res) => {
-  const { bssid, ssid, encryption, signal, channel, vendor, clients } = req.body;
+  const { bssid, encryption, signal, channel, vendor, clients } = req.body;
+  const ssid = cleanSsid(req.body.ssid);
   if (!bssid) return res.status(400).json({ error: 'bssid required' });
 
   const { type: monsterType, cr, xp: xpValue } = classifyMonster({ encryption, signal, ssid });
 
   const existing = db.prepare('SELECT id FROM monsters WHERE bssid=?').get(bssid);
   if (existing) {
-    db.prepare(`UPDATE monsters SET last_seen=datetime('now'), signal=?, clients=? WHERE bssid=?`)
-      .run(signal, clients || 0, bssid);
+    db.prepare(`UPDATE monsters SET last_seen=datetime('now'),signal=?,clients=?,
+      ssid=?,monster_name=?,encryption=?,channel=?,vendor=? WHERE bssid=?`)
+      .run(signal, clients || 0, ssid, ssid || '[Hidden]', encryption, channel,
+        vendor || '', bssid);
     world.recordNetwork({ bssid, signal }, false);
     world.regionFor(db.prepare("SELECT bssid FROM monsters WHERE last_seen >= datetime('now','-3 minutes')").all());
     return res.json({ status: 'updated', monsterType, cr });

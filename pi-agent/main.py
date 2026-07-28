@@ -13,6 +13,7 @@ import time
 import sqlite3
 import threading
 import subprocess
+import re
 
 from config import (
     WIFI_INTERFACE, WIFI_FALLBACK_INTERFACE, LOCAL_DB, SCAN_INTERVAL, ENCOUNTER_COOLDOWN,
@@ -58,6 +59,14 @@ def mark_encounter(bssid):
     conn.commit()
 
 # ── WiFi scanner (nmcli on wlan1) ─────────────────────────────────────────────
+def clean_ssid(value: str | None) -> str:
+    """Turn driver/null padding into a normal hidden-network SSID."""
+    ssid = str(value or "")
+    ssid = re.sub(r"(?:\\x0{1,2})+", "", ssid, flags=re.IGNORECASE)
+    ssid = ssid.replace("\x00", "")
+    ssid = "".join(char for char in ssid if char.isprintable()).strip()
+    return "" if ssid in ("", "--") else ssid
+
 def active_scan_interface() -> str:
     """Prefer the USB radio, automatically falling back to built-in WiFi."""
     probe = subprocess.run(
@@ -82,7 +91,7 @@ def scan_wifi_networks() -> list[dict]:
             if len(parts) < 4:
                 continue
             bssid    = parts[0].replace("\x00", ":").upper().strip()
-            ssid     = parts[1].replace("\x00", ":").strip()
+            ssid     = clean_ssid(parts[1].replace("\x00", ":"))
             security = parts[2].replace("\x00", ":").strip().upper()
             sig_pct  = parts[3].strip()
             chan     = parts[4].strip() if len(parts) > 4 else "?"
@@ -159,7 +168,7 @@ def scan_wifi_with_iw(interface: str) -> list[dict]:
                     "signal": -90, "channel": 0, "hidden": True,
                 }
             elif current and line.startswith("SSID:"):
-                current["ssid"] = line[5:].strip()
+                current["ssid"] = clean_ssid(line[5:])
                 current["hidden"] = not bool(current["ssid"])
             elif current and line.startswith("signal:"):
                 try:
