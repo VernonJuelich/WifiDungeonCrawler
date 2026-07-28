@@ -119,9 +119,15 @@ def _character_frame(target, events, has_monsters):
 
     frames = []
     for folder in folders:
-        frames.extend(sorted(glob.glob(
+        candidates = glob.glob(
             f"/home/bjorn/Bjorn/resources/images/status/{folder}/*.bmp"
-        )))
+        )
+        # The unnumbered BMP in each status folder is a placeholder/icon,
+        # not a full Bjorn animation frame.
+        frames.extend(sorted(
+            path for path in candidates
+            if os.path.splitext(os.path.basename(path))[0][-1:].isdigit()
+        ))
 
     if frames:
         frame_path = frames[int(time.time() // UPDATE_SEC) % len(frames)]
