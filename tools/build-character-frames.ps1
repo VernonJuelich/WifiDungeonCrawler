@@ -17,7 +17,12 @@ $sourceImage = [Drawing.Bitmap]::new((Resolve-Path $Source).Path)
 try {
   # Exact rule positions in the supplied 1280x1074 grid. The columns are
   # intentionally unequal, so equal-size slicing would clip or mix poses.
-  $gridX = @(14, 242, 467, 728, 983, 1260)
+  $gridXByRow = @(
+    @(13, 230, 467, 728, 983, 1260),
+    @(14, 242, 467, 728, 983, 1260),
+    @(14, 242, 467, 728, 983, 1260),
+    @(14, 242, 467, 728, 983, 1260)
+  )
   $gridY = @(12, 272, 535, 788, 1055)
   if ($sourceImage.Width -ne 1280 -or $sourceImage.Height -ne 1074) {
     throw "Expected the 1280x1074 Carl action grid; got $($sourceImage.Width)x$($sourceImage.Height)."
@@ -26,6 +31,7 @@ try {
   for ($column = 0; $column -lt 5; $column++) {
     for ($row = 0; $row -lt 4; $row++) {
       $action = $actions[$row][$column]
+      $gridX = $gridXByRow[$row]
       $groupPath = Join-Path $Output $action
       New-Item -ItemType Directory -Path $groupPath -Force | Out-Null
       # Start below the heading and remain inside the cell rules.
