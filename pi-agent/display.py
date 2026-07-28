@@ -166,11 +166,16 @@ def _render(state):
         max_hp = max(1, int(target.get("max_hp") or 1))
         boss = "BOSS " if target.get("is_boss") else ""
         line1 = f"{boss}{target.get('monster_type', 'Monster')}"
-        line2 = f"{ssid}  HP {hp}/{max_hp}"
+        line2 = ssid
+        hp_text = f"{hp}/{max_hp}"
     else:
         line1, line2 = "SCANNING THE DUNGEON", "No monster in range"
+        hp_text = ""
     draw.text((3, 51), _fit(line1, body, W - 6), font=body, fill=0)
-    draw.text((3, 62), _fit(line2, body, W - 6), font=body, fill=0)
+    hp_width = body.getlength(hp_text)
+    draw.text((3, 62), _fit(line2, body, W - hp_width - 12), font=body, fill=0)
+    if hp_text:
+        draw.text((W - hp_width - 4, 62), hp_text, font=body, fill=0)
 
     portrait = _character_frame(target, events, bool(monsters))
     _paste_center(image, portrait, 74)
@@ -194,12 +199,15 @@ def _render(state):
     draw.text((3, 174), _fit(name.upper(), bold, 60), font=bold, fill=0)
     draw.text((76, 174), f"KILLS {kills}", font=tiny, fill=0)
     draw.text((3, 184), _fit(f"MOOD: {mood.upper()}", tiny, W - 6), font=tiny, fill=0)
-    draw.text((3, 194), f"HP {health}", font=tiny, fill=0)
-    draw.rectangle((25, 195, 70, 199), outline=0)
-    draw.rectangle((26, 196, 26 + int(43 * health / max_health), 198), fill=0)
-    draw.text((75, 194), f"ST {stamina}", font=tiny, fill=0)
-    draw.rectangle((3, 203, W - 4, 207), outline=0)
-    draw.rectangle((4, 204, 4 + int((W - 9) * stamina / max_stamina), 206), fill=0)
+    draw.text((3, 194), "HP", font=tiny, fill=0)
+    draw.rectangle((19, 195, 57, 200), outline=0)
+    draw.rectangle((20, 196, 20 + int(36 * health / max_health), 199), fill=0)
+    draw.text((62, 194), "ST", font=tiny, fill=0)
+    draw.rectangle((78, 195, W - 4, 200), outline=0)
+    draw.rectangle((79, 196, 79 + int((W - 84) * stamina / max_stamina), 199), fill=0)
+    draw.text((3, 202), f"{health}/{max_health}", font=tiny, fill=0)
+    stamina_text = f"{stamina}/{max_stamina}"
+    draw.text((W - tiny.getlength(stamina_text) - 4, 202), stamina_text, font=tiny, fill=0)
 
     message = ""
     for event in events:
