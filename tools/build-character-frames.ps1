@@ -1,5 +1,5 @@
 param(
-  [string]$Source = "$PSScriptRoot\..\Screenshots\PNG\e7593cb8-5867-4c09-887f-79ce3f76871c.png",
+  [string]$Source = "$PSScriptRoot\..\Screenshots\PNG\carl-actions-grid.jpg",
   [string]$Output = "$PSScriptRoot\..\pi-agent\assets\characters"
 )
 
@@ -15,24 +15,24 @@ $actions = @(
 $sourceImage = [Drawing.Bitmap]::new((Resolve-Path $Source).Path)
 
 try {
-  $cellWidth = [math]::Floor($sourceImage.Width / 5)
-  $cellHeight = [math]::Floor($sourceImage.Height / 4)
+  # Exact rule positions in the supplied 1280x1074 grid. The columns are
+  # intentionally unequal, so equal-size slicing would clip or mix poses.
+  $gridX = @(14, 242, 467, 728, 983, 1260)
+  $gridY = @(12, 272, 535, 788, 1055)
+  if ($sourceImage.Width -ne 1280 -or $sourceImage.Height -ne 1074) {
+    throw "Expected the 1280x1074 Carl action grid; got $($sourceImage.Width)x$($sourceImage.Height)."
+  }
 
   for ($column = 0; $column -lt 5; $column++) {
     for ($row = 0; $row -lt 4; $row++) {
       $action = $actions[$row][$column]
       $groupPath = Join-Path $Output $action
       New-Item -ItemType Directory -Path $groupPath -Force | Out-Null
-      $left = $column * $cellWidth
-      $top = $row * $cellHeight
-      $width = if ($column -eq 4) { $sourceImage.Width - $left } else { $cellWidth }
-      $height = if ($row -eq 3) { $sourceImage.Height - $top } else { $cellHeight }
-      # Exclude the printed action label and narrow gutters between grid cells.
-      $height = [math]::Min($height, $cellHeight - 38)
-      $leftTrim = 8
-      $rightTrim = 8
-      $left += $leftTrim
-      $width -= ($leftTrim + $rightTrim)
+      # Start below the heading and remain inside the cell rules.
+      $left = $gridX[$column] + 3
+      $top = $gridY[$row] + 45
+      $width = $gridX[$column + 1] - $left - 3
+      $height = $gridY[$row + 1] - $top - 3
 
       # Find the non-white artwork inside this grid cell.
       $minX = $width
@@ -42,7 +42,7 @@ try {
       for ($y = 0; $y -lt $height; $y += 2) {
         for ($x = 0; $x -lt $width; $x += 2) {
           $pixel = $sourceImage.GetPixel($left + $x, $top + $y)
-          if ($pixel.R -lt 246 -or $pixel.G -lt 246 -or $pixel.B -lt 246) {
+          if ($pixel.R -lt 220 -or $pixel.G -lt 220 -or $pixel.B -lt 220) {
             $minX = [math]::Min($minX, $x)
             $minY = [math]::Min($minY, $y)
             $maxX = [math]::Max($maxX, $x)
