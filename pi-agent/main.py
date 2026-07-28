@@ -226,7 +226,13 @@ def scan_loop():
         # AI targeting: pick best targets
         targets = rank(networks)
         if targets:
-            top = targets[0]
+            # Finish the current fight while its beacon remains a valid target.
+            # Signal rankings fluctuate every scan and previously left several
+            # half-fought monsters permanently marked as engaged.
+            top = next(
+                (target for target in targets if target.get("bssid") == _active_target),
+                targets[0],
+            )
             bssid = top.get("bssid")
             print(f"[AGENT] Top encounter: {top.get('ssid','[hidden]')} ({bssid}) — {top.get('monster_type')}")
             if bssid != _active_target:
@@ -241,6 +247,9 @@ def scan_loop():
                     print(f"[AGENT] Battle: {result.get('status')} "
                           f"monster {result.get('hp', '?')}/{result.get('maxHp', '?')} "
                           f"crawler HP {result.get('crawlerHealth', '?')}")
+                    if result.get("status") in ("victory", "defeated", "monster_not_found"):
+                        _active_target = None
+                        _target_since = 0.0
 
         time.sleep(SCAN_INTERVAL)
 

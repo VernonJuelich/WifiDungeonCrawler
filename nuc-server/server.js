@@ -12,6 +12,9 @@ const expansion = require('./expansion-engine');
 
 const app = express();
 const PORT = Number(process.env.PORT || 9310);
+const STALE_ENCOUNTER_SQL = `UPDATE monsters SET status='alive'
+  WHERE status='engaged'
+  AND (last_battle_at IS NULL OR last_battle_at < datetime('now','-3 minutes'))`;
 
 function cleanSsid(value) {
   const ssid = String(value || '')
@@ -37,8 +40,10 @@ bus.setMaxListeners(50);
 battleEngine.setEmitter(bus);
 const offlineProgress = progression.applyOfflineProgress();
 progression.ensureQuest();
+db.prepare(STALE_ENCOUNTER_SQL).run();
 setInterval(() => {
   db.prepare("UPDATE crawler SET last_active=datetime('now') WHERE id=1").run();
+  db.prepare(STALE_ENCOUNTER_SQL).run();
 }, 60000).unref();
 setInterval(() => {
   const town = progression.visitTownIfDue();

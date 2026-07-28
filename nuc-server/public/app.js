@@ -205,8 +205,16 @@ function renderWorld(s) {
       }).join('')}</div>`
     : '<div class="empty-state">Walk somewhere. Geography refuses to generate itself.</div>';
 
-  const notable = [...(s.nemeses || []).map(m => ({ ...m, tag: 'NEMESIS' })),
-    ...(s.bosses || []).map(m => ({ ...m, tag: 'BOSS' }))].slice(0, 6);
+  const notableByBssid = new Map();
+  for (const monster of [
+    ...(s.nemeses || []).map(m => ({ ...m, tag: 'NEMESIS' })),
+    ...(s.bosses || []).map(m => ({ ...m, tag: 'BOSS' })),
+  ]) {
+    if (monster.status !== 'dead' && !notableByBssid.has(monster.bssid)) {
+      notableByBssid.set(monster.bssid, monster);
+    }
+  }
+  const notable = [...notableByBssid.values()].slice(0, 6);
   document.getElementById('boss-list').innerHTML = notable.length
     ? `<div class="threat-heading">KNOWN PROBLEMS CARL HAS NOT SOLVED</div>
       <div class="threat-grid">${notable.map(m =>
@@ -349,7 +357,9 @@ function renderMonsters(monsters) {
 
     return `
     <div class="monster-card ${m.status || 'alive'}" title="${escHtml(m.bssids.join('\n'))}">
-      ${m.ai_score != null ? `<span class="ai-score ai-score-${aiTier(m.ai_score)}" title="Encounter priority">${m.ai_score}%</span>` : ''}
+      ${m.ai_score != null && m.status !== 'dead'
+        ? `<span class="ai-score ai-score-${aiTier(m.ai_score)}" title="Encounter priority, not battle progress">THREAT ${m.ai_score}</span>`
+        : m.status === 'dead' ? '<span class="ai-score cleared-score">CLEARED</span>' : ''}
       ${m.count > 1 ? `<span class="monster-count">×${m.count}</span>` : ''}
       <div class="monster-icon-wrap">
         <img class="monster-icon monster-icon-${(m.monster_type||'').toLowerCase().replace(/\s+/g,'-')}"
@@ -431,7 +441,10 @@ function renderAchievements(achievements) {
 
 function renderEncounterQueue(monsters) {
   const queue = document.getElementById('encounter-queue');
-  const active = (monsters || []).filter(m => m.status === 'engaged').slice(0, 4);
+  const active = (monsters || []).filter(m => {
+    if (m.status !== 'engaged' || !m.last_battle_at) return false;
+    return Date.now() - new Date(`${m.last_battle_at}Z`).getTime() < 3 * 60 * 1000;
+  }).slice(0, 4);
   if (!active.length) {
     queue.innerHTML = '<div class="empty-state">Move within signal range to begin battle...</div>';
     return;
@@ -560,17 +573,20 @@ function connectSSE() {
 
       case 'battle_turn':
         updateMonsterStatus(data.bssid, 'engaged');
+        updateMonsterBattleState(data);
         updateEncounterItem(data);
         updateVitals(data);
         break;
 
       case 'victory':
         updateMonsterStatus(data.bssid, 'dead');
+        removeEncounterItem(data.bssid);
         document.getElementById('crawler-kills').textContent =
           parseInt(document.getElementById('crawler-kills').textContent || 0) + 1;
         if (data.message) showAnnouncement(data.message);
         addEventEntry(data);
         updateVitals(data);
+        fetchState();
         break;
 
       case 'defeat':
@@ -640,6 +656,22 @@ function updateMonsterStatus(bssid, status) {
   const monster = state.monsters.find(m => m.bssid === bssid);
   if (monster) monster.status = status;
   renderMonsters(state.monsters);
+}
+
+function updateMonsterBattleState(data) {
+  const monster = state.monsters.find(m => m.bssid === data.bssid);
+  if (!monster) return;
+  monster.hp = data.hp;
+  monster.max_hp = data.maxHp;
+  monster.last_battle_at = new Date().toISOString().slice(0, 19).replace('T', ' ');
+}
+
+function removeEncounterItem(bssid) {
+  document.getElementById(`encounter-${String(bssid || '').replace(/:/g, '')}`)?.remove();
+  if (!document.querySelector('#encounter-queue .encounter-item')) {
+    document.getElementById('encounter-queue').innerHTML =
+      '<div class="empty-state">Move within signal range to begin battle...</div>';
+  }
 }
 
 function updateEncounterItem(data) {

@@ -470,6 +470,7 @@ main {
 .ai-score-mid  { color: var(--gold);    border-color: var(--gold);    background: rgba(255,215,0,0.1); }
 .ai-score-low  { color: var(--accent2); border-color: var(--accent2); background: rgba(255,47,123,0.1); }
 .ai-score-zero { color: var(--text-dim);border-color: var(--text-dim);background: transparent; }
+.cleared-score { color: #5a5347; border-color: #8e8573; background: #ddd4c0; }
 
 .monster-count {
   position: absolute; top: 5px; right: 7px;

@@ -254,8 +254,8 @@ function state() {
     dailyQuests: db.prepare('SELECT * FROM daily_quests WHERE quest_date=? ORDER BY id').all(today()),
     regions,
     map: regions.map((r, index) => ({ ...r, x: (index * 37) % 100, y: (index * 61) % 100 })),
-    nemeses: monsters.filter(m => m.nemesis).slice(0, 5),
-    bosses: monsters.filter(m => m.is_boss).slice(0, 5),
+    nemeses: monsters.filter(m => m.nemesis && m.status !== 'dead').slice(0, 5),
+    bosses: monsters.filter(m => m.is_boss && m.status !== 'dead').slice(0, 5),
     weeklyRecap: weeklyRecap(),
     recentRecap: recentRecap(),
   };
