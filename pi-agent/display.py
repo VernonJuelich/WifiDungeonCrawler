@@ -16,6 +16,8 @@ W, H = 122, 250
 UPDATE_SEC = 30
 ASSET_ROOT = "/home/bjorn/Bjorn/resources/images/static"
 CHARACTER_ROOT = "/home/bjorn/dungeon/assets/characters"
+DONUT_ROOT = "/home/bjorn/dungeon/assets/donut"
+LOOT_ROOT = "/home/bjorn/dungeon/assets/loot"
 
 QUIPS = [
     "The audience demands battle.",
@@ -108,6 +110,42 @@ def _asset(name, size, invert=False):
 def _paste_center(canvas, image, y):
     if image:
         canvas.paste(image, ((W - image.width) // 2, y))
+
+
+def _support_frame(root, group):
+    frames = sorted(glob.glob(f"{root}/{group}/*.bmp"))
+    if not frames:
+        return None
+    try:
+        frame = Image.open(frames[int(time.time() // UPDATE_SEC) % len(frames)]).convert("1")
+        frame.thumbnail((105, 82), Image.Resampling.NEAREST)
+        return frame
+    except Exception:
+        return None
+
+
+def _loot_group(item):
+    if not item:
+        return "bag"
+    item_type = str(item.get("item_type") or "misc").lower()
+    name = str(item.get("item_name") or "").lower()
+    if item_type == "weapon":
+        return "weapon"
+    if item_type == "armor":
+        for keyword, group in (
+            ("shield", "shield"), ("helmet", "helmet"), ("boot", "boots"),
+            ("belt", "belt"), ("ring", "ring"),
+        ):
+            if keyword in name:
+                return group
+        return "armor"
+    if item_type == "potion":
+        return "healing" if "heal" in name else "potion"
+    if item_type == "scroll":
+        return "book" if "tome" in name or "book" in name else "scroll"
+    if item_type == "artifact":
+        return ("gem", "key", "ring")[sum(ord(char) for char in name) % 3]
+    return ("bag", "pouch", "gold", "key")[sum(ord(char) for char in name) % 4]
 
 
 def _character_frame(target, events, has_monsters, crawler):
@@ -306,14 +344,19 @@ def _render_page(state, page):
             rows.append(f"  {daily.get('progress',0)}/{daily.get('required',0)}")
     elif page == "donut":
         donut = state.get("companion") or {}
-        frames = glob.glob(f"{CHARACTER_ROOT}/talking/*.bmp")
-        if frames:
-            try:
-                portrait = Image.open(frames[0]).convert("1")
-                portrait.thumbnail((105, 82), Image.Resampling.LANCZOS)
-                _paste_center(image, portrait, 24)
-            except Exception:
-                pass
+        action = str(donut.get("last_action") or "").lower()
+        mood = str(donut.get("mood") or "judgmental").lower()
+        hour = time.localtime().tm_hour
+        if hour < 6 or hour >= 22 or mood in ("sleepy", "tired"):
+            donut_group = "sleep"
+        elif action in ("critical", "steal") or mood in ("violent", "excited"):
+            donut_group = "run"
+        elif action in ("heal", "find") or mood in ("delighted", "playful"):
+            donut_group = "play"
+        else:
+            donut_group = "idle"
+        portrait = _support_frame(DONUT_ROOT, donut_group)
+        _paste_center(image, portrait, 24)
         draw.line((3, 110, W - 4, 110), fill=0)
         name = str(donut.get("name") or "Donut").upper()
         level = int(donut.get("level") or 1)
@@ -332,8 +375,8 @@ def _render_page(state, page):
         draw.text((4, 169), f"HEALS {donut.get('heals',0)}", font=tiny, fill=0)
         draw.text((43, 169), f"FINDS {donut.get('finds',0)}", font=tiny, fill=0)
         draw.text((82, 169), f"THEFTS {donut.get('steals',0)}", font=tiny, fill=0)
-        action = str(donut.get("last_action") or "judging Carl")
-        message = f"Donut is {action}. No witnesses. No refunds."
+        action_text = action or "judging Carl"
+        message = f"Donut is {action_text}. No witnesses. No refunds."
         y = 185
         for line in _wrap(message, body, W - 10, 4):
             draw.text((4, y), line, font=body, fill=0)
@@ -342,14 +385,9 @@ def _render_page(state, page):
     elif page == "loot":
         loot = state.get("loot") or []
         inventory = state.get("inventory") or {}
-        frames = glob.glob(f"{CHARACTER_ROOT}/looting/*.bmp")
-        if frames:
-            try:
-                portrait = Image.open(frames[0]).convert("1")
-                portrait.thumbnail((105, 82), Image.Resampling.LANCZOS)
-                _paste_center(image, portrait, 24)
-            except Exception:
-                pass
+        latest = loot[0] if loot else None
+        portrait = _support_frame(LOOT_ROOT, _loot_group(latest))
+        _paste_center(image, portrait, 24)
         draw.line((3, 110, W - 4, 110), fill=0)
         inv_text = f"BAG {inventory.get('count', len(loot))}/{inventory.get('capacity', crawler.get('inventory_capacity', 10))}"
         gold_text = f"GOLD {crawler.get('gold', 0)}"
@@ -364,7 +402,6 @@ def _render_page(state, page):
         draw.text((4, 166), _fit((armor or {}).get("item_name") or "Optimistic clothing", tiny, W - 8, True), font=tiny, fill=0)
 
         draw.line((3, 180, W - 4, 180), fill=0)
-        latest = loot[0] if loot else None
         if latest:
             rarity = str(latest.get("rarity") or "common").upper()
             draw.text((4, 185), f"LATEST DROP · {rarity}", font=tiny, fill=0)
