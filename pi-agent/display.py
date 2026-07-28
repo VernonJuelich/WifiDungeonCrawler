@@ -324,13 +324,37 @@ def _render_page(state, page):
     if page == "character":
         portrait = _character_frame(None, [], False, crawler)
         _paste_center(image, portrait, 24)
-        rows = [
-            f"{crawler.get('name','Carl')}  LV {crawler.get('level',1)}",
-            f"STR {crawler.get('strength',5)}  DEX {crawler.get('dexterity',5)}",
-            f"VIT {crawler.get('vitality',5)}  INT {crawler.get('intelligence',5)}",
-            f"WEAPON +{crawler.get('weapon_power',0)}  ARMOR +{crawler.get('armor_power',0)}",
-            f"PRESTIGE {crawler.get('prestige',0)}  GOLD {crawler.get('gold',0)}",
-        ]
+        draw.line((3, 110, W - 4, 110), fill=0)
+        name = str(crawler.get("name") or "Carl").upper()
+        level_text = f"LV {crawler.get('level', 1)}"
+        draw.text((4, 115), _fit(name, bold, 75, True), font=bold, fill=0)
+        draw.text((W - body.getlength(level_text) - 4, 117), level_text, font=body, fill=0)
+        draw.text(
+            (4, 130),
+            _fit(str(crawler.get("title") or "Unsupervised Crawler").upper(), tiny, W - 8, True),
+            font=tiny,
+            fill=0,
+        )
+
+        xp = int(crawler.get("xp") or 0)
+        xp_next = max(1, int(crawler.get("xp_next") or 100))
+        draw.text((4, 143), "XP", font=tiny, fill=0)
+        draw.rectangle((19, 144, W - 5, 151), outline=0)
+        xp_fill = int((W - 26) * min(1, xp / xp_next))
+        draw.rectangle((20, 145, 20 + xp_fill, 150), fill=0)
+
+        draw.text((4, 159), f"STR {crawler.get('strength',5)}", font=body, fill=0)
+        draw.text((64, 159), f"DEX {crawler.get('dexterity',5)}", font=body, fill=0)
+        draw.text((4, 173), f"VIT {crawler.get('vitality',5)}", font=body, fill=0)
+        draw.text((64, 173), f"INT {crawler.get('intelligence',5)}", font=body, fill=0)
+        draw.line((3, 187, W - 4, 187), fill=0)
+        draw.text((4, 192), f"WEAPON +{crawler.get('weapon_power',0)}", font=tiny, fill=0)
+        draw.text((64, 192), f"ARMOR +{crawler.get('armor_power',0)}", font=tiny, fill=0)
+        draw.text((4, 205), f"GOLD {crawler.get('gold',0)}", font=tiny, fill=0)
+        draw.text((64, 205), f"PRESTIGE {crawler.get('prestige',0)}", font=tiny, fill=0)
+        mood = str(crawler.get("mood") or "curious").upper()
+        draw.text((4, 220), _fit(f"MOOD: {mood}", body, W - 8, True), font=body, fill=0)
+        return image
     elif page == "quest":
         quest = state.get("quest") or {}
         rows = [
