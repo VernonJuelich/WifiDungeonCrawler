@@ -12,6 +12,14 @@ db.exec(`
     xp_next INTEGER DEFAULT 100,
     kills INTEGER DEFAULT 0,
     floor INTEGER DEFAULT 1,
+    health INTEGER DEFAULT 100,
+    max_health INTEGER DEFAULT 100,
+    stamina INTEGER DEFAULT 100,
+    max_stamina INTEGER DEFAULT 100,
+    mood TEXT DEFAULT 'curious',
+    weapon_power INTEGER DEFAULT 0,
+    armor_power INTEGER DEFAULT 0,
+    last_recovery TEXT DEFAULT (datetime('now')),
     created_at TEXT DEFAULT (datetime('now'))
   );
 
@@ -40,6 +48,9 @@ db.exec(`
     item_type TEXT,
     rarity TEXT,
     flavor_text TEXT,
+    power INTEGER DEFAULT 0,
+    defense INTEGER DEFAULT 0,
+    equipped INTEGER DEFAULT 0,
     acquired_at TEXT DEFAULT (datetime('now'))
   );
 
@@ -75,6 +86,43 @@ if (!monsterColumns.has('encounter_required')) {
 }
 if (!monsterColumns.has('victories')) {
   db.exec('ALTER TABLE monsters ADD COLUMN victories INTEGER DEFAULT 0');
+}
+for (const [name, definition] of [
+  ['hp', 'INTEGER DEFAULT 0'],
+  ['max_hp', 'INTEGER DEFAULT 0'],
+  ['is_boss', 'INTEGER DEFAULT 0'],
+  ['room_id', "TEXT DEFAULT ''"],
+  ['dwell_seconds', 'INTEGER DEFAULT 0'],
+  ['last_battle_at', 'TEXT'],
+]) {
+  if (!monsterColumns.has(name)) db.exec(`ALTER TABLE monsters ADD COLUMN ${name} ${definition}`);
+}
+
+const crawlerColumns = new Set(
+  db.prepare("PRAGMA table_info(crawler)").all().map(column => column.name)
+);
+for (const [name, definition] of [
+  ['health', 'INTEGER DEFAULT 100'],
+  ['max_health', 'INTEGER DEFAULT 100'],
+  ['stamina', 'INTEGER DEFAULT 100'],
+  ['max_stamina', 'INTEGER DEFAULT 100'],
+  ['mood', "TEXT DEFAULT 'curious'"],
+  ['weapon_power', 'INTEGER DEFAULT 0'],
+  ['armor_power', 'INTEGER DEFAULT 0'],
+  ['last_recovery', 'TEXT'],
+]) {
+  if (!crawlerColumns.has(name)) db.exec(`ALTER TABLE crawler ADD COLUMN ${name} ${definition}`);
+}
+
+const lootColumns = new Set(
+  db.prepare("PRAGMA table_info(loot)").all().map(column => column.name)
+);
+for (const [name, definition] of [
+  ['power', 'INTEGER DEFAULT 0'],
+  ['defense', 'INTEGER DEFAULT 0'],
+  ['equipped', 'INTEGER DEFAULT 0'],
+]) {
+  if (!lootColumns.has(name)) db.exec(`ALTER TABLE loot ADD COLUMN ${name} ${definition}`);
 }
 
 module.exports = db;

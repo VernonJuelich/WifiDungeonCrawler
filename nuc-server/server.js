@@ -83,9 +83,9 @@ app.post('/api/network', async (req, res) => {
 
 // POST /api/encounter — a safe game turn based only on public beacon metadata.
 app.post('/api/encounter', async (req, res) => {
-  const { bssid, signal = -90 } = req.body || {};
+  const { bssid, signal = -90, dwell_seconds = 0 } = req.body || {};
   if (!bssid) return res.status(400).json({ error: 'bssid required' });
-  const result = await battleEngine.advanceEncounter(bssid, signal);
+  const result = await battleEngine.advanceEncounter(bssid, signal, dwell_seconds);
   if (result.error) return res.status(404).json(result);
   res.json(result);
 });
@@ -128,7 +128,13 @@ app.post('/api/targeting', (req, res) => {
   const { candidates } = req.body;
   if (!Array.isArray(candidates) || !candidates.length)
     return res.status(400).json({ error: 'candidates array required' });
-  res.json({ targets: scoreTargets(candidates), model: 'bayesian-contextual-v1' });
+  const defeated = new Set(
+    db.prepare("SELECT bssid FROM monsters WHERE status='dead'").all().map(row => row.bssid)
+  );
+  res.json({
+    targets: scoreTargets(candidates).filter(candidate => !defeated.has(candidate.bssid)),
+    model: 'signal-encounter-v1',
+  });
 });
 
 app.get('/api/targeting/stats', (req, res) => {

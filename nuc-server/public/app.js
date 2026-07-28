@@ -15,6 +15,8 @@ const EVENT_ICONS = {
   encounter:       '⚔',
   battle_turn:     '⚡',
   victory:         '☠',
+  defeat:          '✚',
+  floor_up:        '⬆',
   loot:            '🎁',
   achievement:     '🏆',
   level_up:        '⬆',
@@ -85,6 +87,12 @@ function renderCrawler(c) {
   const pct = Math.min(100, (xp / xpNext) * 100).toFixed(1);
   document.getElementById('xp-fill').style.width = pct + '%';
   document.getElementById('xp-track-label').textContent = `${xp} / ${xpNext}`;
+  const health = c.health ?? 100;
+  const maxHealth = c.max_health || 100;
+  document.getElementById('health-fill').style.width =
+    Math.min(100, health / maxHealth * 100) + '%';
+  document.getElementById('crawler-vitals').textContent =
+    `HP ${health}/${maxHealth} · ST ${c.stamina ?? 100}/${c.max_stamina || 100} · ${(c.mood || 'curious').toUpperCase()}`;
 }
 
 function groupMonsters(monsters) {
@@ -257,12 +265,27 @@ function connectSSE() {
       case 'battle_turn':
         updateMonsterStatus(data.bssid, 'engaged');
         updateEncounterItem(data);
+        updateVitals(data);
         break;
 
       case 'victory':
         updateMonsterStatus(data.bssid, 'dead');
         document.getElementById('crawler-kills').textContent =
           parseInt(document.getElementById('crawler-kills').textContent || 0) + 1;
+        if (data.message) showAnnouncement(data.message);
+        addEventEntry(data);
+        updateVitals(data);
+        break;
+
+      case 'defeat':
+        updateMonsterStatus(data.bssid, 'alive');
+        updateVitals(data);
+        if (data.message) showAnnouncement(data.message);
+        addEventEntry(data);
+        break;
+
+      case 'floor_up':
+        document.getElementById('crawler-floor').textContent = data.floor;
         if (data.message) showAnnouncement(data.message);
         addEventEntry(data);
         break;
@@ -326,8 +349,17 @@ function updateEncounterItem(data) {
     div.id = id;
     queue.insertBefore(div, queue.firstChild);
   }
-  const pct = Math.min(100, Math.round((data.progress / Math.max(1, data.required)) * 100));
-  div.textContent = `${data.ssid || data.bssid} — battle ${pct}%`;
+  const pct = Math.min(100, Math.round((data.hp / Math.max(1, data.maxHp)) * 100));
+  div.textContent = `${data.isBoss ? 'BOSS — ' : ''}${data.ssid || data.bssid} — HP ${data.hp}/${data.maxHp} (${pct}%)${data.critical ? ' CRITICAL!' : data.hit === false ? ' MISS' : ''}`;
+}
+
+function updateVitals(data) {
+  const health = data.crawlerHealth ?? 0;
+  const maxHealth = data.crawlerMaxHealth || 100;
+  document.getElementById('health-fill').style.width =
+    Math.min(100, health / maxHealth * 100) + '%';
+  document.getElementById('crawler-vitals').textContent =
+    `HP ${health}/${maxHealth} · ST ${data.stamina ?? 0}/${data.maxStamina || 100} · ${(data.mood || '').toUpperCase()}`;
 }
 
 // ── Crawler rename ────────────────────────────────────────────────────────────

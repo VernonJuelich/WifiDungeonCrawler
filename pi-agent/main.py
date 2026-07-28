@@ -15,7 +15,7 @@ import threading
 import subprocess
 
 from config import (
-    WIFI_INTERFACE, LOCAL_DB, SCAN_INTERVAL, ENCOUNTER_COOLDOWN,
+    WIFI_INTERFACE, WIFI_FALLBACK_INTERFACE, LOCAL_DB, SCAN_INTERVAL, ENCOUNTER_COOLDOWN,
 )
 from monster import classify
 from targeting import rank
@@ -35,6 +35,8 @@ seen_columns = {row[1] for row in conn.execute("PRAGMA table_info(seen)")}
 if "last_encounter" not in seen_columns:
     conn.execute("ALTER TABLE seen ADD COLUMN last_encounter REAL DEFAULT 0")
 conn.commit()
+_active_target = None
+_target_since = 0.0
 
 def mark_seen(bssid, ssid):
     conn.execute(
@@ -56,11 +58,20 @@ def mark_encounter(bssid):
     conn.commit()
 
 # ── WiFi scanner (nmcli on wlan1) ─────────────────────────────────────────────
+def active_scan_interface() -> str:
+    """Prefer the USB radio, automatically falling back to built-in WiFi."""
+    probe = subprocess.run(
+        ["iw", "dev", WIFI_INTERFACE, "info"],
+        capture_output=True, timeout=5
+    )
+    return WIFI_INTERFACE if probe.returncode == 0 else WIFI_FALLBACK_INTERFACE
+
 def scan_wifi_networks() -> list[dict]:
     try:
+        interface = active_scan_interface()
         result = subprocess.run(
             ["nmcli", "-t", "-f", "BSSID,SSID,SECURITY,SIGNAL,CHAN",
-             "dev", "wifi", "list", "ifname", WIFI_INTERFACE, "--rescan", "yes"],
+             "dev", "wifi", "list", "ifname", interface, "--rescan", "yes"],
             capture_output=True, text=True, timeout=30
         )
         networks = []
@@ -106,10 +117,12 @@ def scan_wifi_networks() -> list[dict]:
                 "channel":    chan,
                 "hidden":     hidden,
             })
-        return networks or scan_wifi_with_iw()
+        # Never use raw iw fallback on wlan0: it may be carrying the uplink.
+        return networks or (scan_wifi_with_iw(interface) if interface == WIFI_INTERFACE else [])
     except Exception as e:
         print(f"[AGENT] nmcli scan unavailable: {e}; trying passive iw scan")
-        return scan_wifi_with_iw()
+        interface = active_scan_interface()
+        return scan_wifi_with_iw(interface) if interface == WIFI_INTERFACE else []
 
 def _channel_from_frequency(frequency: int) -> int:
     if frequency == 2484:
@@ -122,11 +135,11 @@ def _channel_from_frequency(frequency: int) -> int:
         return (frequency - 5950) // 5
     return 0
 
-def scan_wifi_with_iw() -> list[dict]:
+def scan_wifi_with_iw(interface: str) -> list[dict]:
     """Passive beacon scan for adapters intentionally unmanaged by NetworkManager."""
     try:
         result = subprocess.run(
-            ["iw", "dev", WIFI_INTERFACE, "scan", "passive"],
+            ["iw", "dev", interface, "scan", "passive"],
             capture_output=True, text=True, timeout=30
         )
         if result.returncode != 0:
@@ -173,6 +186,7 @@ def scan_wifi_with_iw() -> list[dict]:
 
 # ── Scan loop ─────────────────────────────────────────────────────────────────
 def scan_loop():
+    global _active_target, _target_since
     print("[AGENT] Scan loop started")
     while True:
         networks = scan_wifi_networks()
@@ -206,12 +220,18 @@ def scan_loop():
             top = targets[0]
             bssid = top.get("bssid")
             print(f"[AGENT] Top encounter: {top.get('ssid','[hidden]')} ({bssid}) — {top.get('monster_type')}")
+            if bssid != _active_target:
+                _active_target = bssid
+                _target_since = time.time()
+                print(f"[AGENT] Entered a new dungeon room: channel {top.get('channel', '?')}")
+            dwell_seconds = int(time.time() - _target_since)
             if bssid and encounter_ready(bssid) and is_nuc_reachable():
-                result = report_encounter(bssid, top.get("signal", -90))
+                result = report_encounter(bssid, top.get("signal", -90), dwell_seconds)
                 if result:
                     mark_encounter(bssid)
                     print(f"[AGENT] Battle: {result.get('status')} "
-                          f"{result.get('progress', 0)}/{result.get('required', 100)}")
+                          f"monster {result.get('hp', '?')}/{result.get('maxHp', '?')} "
+                          f"crawler HP {result.get('crawlerHealth', '?')}")
 
         time.sleep(SCAN_INTERVAL)
 
@@ -235,6 +255,14 @@ if __name__ == "__main__":
         print("[AGENT] Display thread started")
     except Exception as e:
         print(f"[AGENT] Display unavailable: {e}")
+
+    try:
+        from local_dashboard import dashboard_loop
+        t4 = threading.Thread(target=dashboard_loop, daemon=True)
+        t4.start()
+        print("[AGENT] Local dashboard thread started")
+    except Exception as e:
+        print(f"[AGENT] Local dashboard unavailable: {e}")
 
     try:
         while True:

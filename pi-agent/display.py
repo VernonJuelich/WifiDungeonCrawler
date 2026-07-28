@@ -91,13 +91,18 @@ def _paste_center(canvas, image, y):
         canvas.paste(image, ((W - image.width) // 2, y))
 
 
-def _character_frame(target, events):
+def _character_frame(target, events, has_monsters):
     """Rotate Bjorn artwork by game state, Ragnar-style."""
     latest_type = (events[0].get("type") if events else "") or ""
-    if latest_type in ("victory", "loot"):
+    hour = time.localtime().tm_hour
+    if hour < 6 or hour >= 22:
+        folders = ("IDLE",)
+    elif latest_type in ("victory", "loot"):
         folders = ("NetworkScanner", "IDLE")
     elif target and target.get("status") == "engaged":
         folders = ("NetworkScanner",)
+    elif has_monsters:
+        folders = ("NetworkScanner", "IDLE")
     else:
         folders = ("IDLE",)
 
@@ -157,16 +162,17 @@ def _render(state):
     # Two compact status lines above a large central character.
     if target:
         ssid = target.get("ssid") or "[Hidden]"
-        progress = int(target.get("encounter_progress") or 0)
-        required = max(1, int(target.get("encounter_required") or 100))
-        line1 = f"{target.get('monster_type', 'Monster')}"
-        line2 = f"{ssid}  {round(progress * 100 / required)}%"
+        hp = int(target.get("hp") or 0)
+        max_hp = max(1, int(target.get("max_hp") or 1))
+        boss = "BOSS " if target.get("is_boss") else ""
+        line1 = f"{boss}{target.get('monster_type', 'Monster')}"
+        line2 = f"{ssid}  HP {hp}/{max_hp}"
     else:
         line1, line2 = "SCANNING THE DUNGEON", "No monster in range"
     draw.text((3, 51), _fit(line1, body, W - 6), font=body, fill=0)
     draw.text((3, 62), _fit(line2, body, W - 6), font=body, fill=0)
 
-    portrait = _character_frame(target, events)
+    portrait = _character_frame(target, events, bool(monsters))
     _paste_center(image, portrait, 74)
 
     # Decorative divider inspired by Ragnar's frise strip.
@@ -180,13 +186,20 @@ def _render(state):
     xp = int(crawler.get("xp") or 0)
     xp_next = max(1, int(crawler.get("xp_next") or 100))
     kills = int(crawler.get("kills") or 0)
+    mood = crawler.get("mood") or "curious"
+    health = int(crawler.get("health") or 0)
+    max_health = max(1, int(crawler.get("max_health") or 100))
+    stamina = int(crawler.get("stamina") or 0)
+    max_stamina = max(1, int(crawler.get("max_stamina") or 100))
     draw.text((3, 174), _fit(name.upper(), bold, 60), font=bold, fill=0)
     draw.text((76, 174), f"KILLS {kills}", font=tiny, fill=0)
-    draw.rectangle((3, 188, W - 4, 194), outline=0)
-    fill = int((W - 9) * min(1, xp / xp_next))
-    if fill:
-        draw.rectangle((5, 190, 5 + fill, 192), fill=0)
-    draw.text((3, 197), f"XP {xp}/{xp_next}", font=tiny, fill=0)
+    draw.text((3, 184), _fit(f"MOOD: {mood.upper()}", tiny, W - 6), font=tiny, fill=0)
+    draw.text((3, 194), f"HP {health}", font=tiny, fill=0)
+    draw.rectangle((25, 195, 70, 199), outline=0)
+    draw.rectangle((26, 196, 26 + int(43 * health / max_health), 198), fill=0)
+    draw.text((75, 194), f"ST {stamina}", font=tiny, fill=0)
+    draw.rectangle((3, 203, W - 4, 207), outline=0)
+    draw.rectangle((4, 204, 4 + int((W - 9) * stamina / max_stamina), 206), fill=0)
 
     message = ""
     for event in events:
