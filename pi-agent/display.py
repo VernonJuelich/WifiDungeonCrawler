@@ -172,7 +172,6 @@ def _render(state):
     draw.rectangle((0, 0, W - 1, H - 1), outline=0)
     heading = "DUNGEON"
     draw.text(((W - title.getlength(heading)) / 2, 3), heading, font=title, fill=0)
-    draw.line((1, 22, W - 2, 22), fill=0)
 
     stats = [
         ("target.bmp", len(monsters)),
@@ -183,9 +182,9 @@ def _render(state):
     for x, (icon_name, value) in zip(x_positions, stats):
         icon = _asset(icon_name, (15, 15))
         if icon:
-            image.paste(icon, (x, 27))
-        draw.text((x + 17, 29), str(value), font=bold, fill=0)
-    draw.line((1, 47, W - 2, 47), fill=0)
+            image.paste(icon, (x, 24))
+        draw.text((x + 17, 26), str(value), font=bold, fill=0)
+    draw.line((1, 44, W - 2, 44), fill=0)
 
     # Two compact status lines above a large central character.
     if target:
@@ -199,43 +198,35 @@ def _render(state):
     else:
         line1, line2 = "SCANNING THE DUNGEON", "No monster in range"
         hp_text = ""
-    draw.text((3, 51), _fit(line1, body, W - 10, True), font=body, fill=0)
+    draw.text((3, 47), _fit(line1, body, W - 10, True), font=body, fill=0)
     hp_width = body.getlength(hp_text)
-    draw.text((3, 62), _fit(line2, body, W - hp_width - 16, True), font=body, fill=0)
+    draw.text((3, 58), _fit(line2, body, W - hp_width - 16, True), font=body, fill=0)
     if hp_text:
-        draw.text((W - hp_width - 4, 62), hp_text, font=body, fill=0)
-    target_max_hp = int((target or {}).get("max_hp") or 0)
-    encounter_pct = 0 if not target or target_max_hp <= 0 else (
-        1 - int(target.get("hp") or 0) / target_max_hp
-    )
-    draw.rectangle((3, 72, W - 4, 74), outline=0)
-    draw.line((4, 73, 4 + int((W - 9) * max(0, min(1, encounter_pct))), 73), fill=0)
+        draw.text((W - hp_width - 4, 58), hp_text, font=body, fill=0)
 
     portrait = _character_frame(target, events, bool(monsters))
-    _paste_center(image, portrait, 77)
+    _paste_center(image, portrait, 68)
 
     name = crawler.get("name") or "Carl"
     xp = int(crawler.get("xp") or 0)
     xp_next = max(1, int(crawler.get("xp_next") or 100))
-    kills = int(crawler.get("kills") or 0)
     mood = crawler.get("mood") or "curious"
     health = int(crawler.get("health") or 0)
     max_health = max(1, int(crawler.get("max_health") or 100))
     stamina = int(crawler.get("stamina") or 0)
     max_stamina = max(1, int(crawler.get("max_stamina") or 100))
-    draw.text((3, 160), _fit(name.upper(), bold, 60, True), font=bold, fill=0)
-    draw.text((76, 160), f"KILLS {kills}", font=tiny, fill=0)
-    draw.text((3, 170), _fit(f"MOOD: {mood.upper()}", tiny, W - 10, True), font=tiny, fill=0)
-    draw.text((3, 180), "HP", font=tiny, fill=0)
-    draw.rectangle((19, 181, 57, 186), outline=0)
-    draw.rectangle((20, 182, 20 + int(36 * health / max_health), 185), fill=0)
-    draw.text((62, 180), "ST", font=tiny, fill=0)
-    draw.rectangle((78, 181, W - 4, 186), outline=0)
-    draw.rectangle((79, 182, 79 + int((W - 84) * stamina / max_stamina), 185), fill=0)
     quest = state.get("quest") or {}
-    quest_pct = int(quest.get("progress") or 0) / max(1, int(quest.get("required") or 1))
-    draw.rectangle((3, 190, W - 4, 192), outline=0)
-    draw.line((4, 191, 4 + int((W - 9) * max(0, min(1, quest_pct))), 191), fill=0)
+    quest_progress = int(quest.get("progress") or 0)
+    quest_required = int(quest.get("required") or 0)
+    draw.text((3, 151), _fit(name.upper(), bold, 60, True), font=bold, fill=0)
+    draw.text((70, 152), f"QUEST {quest_progress}/{quest_required}", font=tiny, fill=0)
+    draw.text((3, 161), _fit(f"MOOD: {mood.upper()}", tiny, W - 10, True), font=tiny, fill=0)
+    draw.text((3, 171), "HP", font=tiny, fill=0)
+    draw.rectangle((19, 172, 57, 177), outline=0)
+    draw.rectangle((20, 173, 20 + int(36 * health / max_health), 176), fill=0)
+    draw.text((62, 171), "ST", font=tiny, fill=0)
+    draw.rectangle((78, 172, W - 4, 177), outline=0)
+    draw.rectangle((79, 173, 79 + int((W - 84) * stamina / max_stamina), 176), fill=0)
     message = ""
     for event in events:
         if event.get("message"):
@@ -248,7 +239,7 @@ def _render(state):
         if message.upper().startswith(prefix):
             message = message[len(prefix):].strip()
             break
-    y = 196
+    y = 182
     for line in _wrap(message, tiny, W - 14, 5):
         draw.text((4, y), line, font=tiny, fill=0)
         y += 10
