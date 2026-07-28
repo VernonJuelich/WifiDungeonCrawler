@@ -53,11 +53,14 @@ def _font(size=9, bold=False, viking=False):
     return ImageFont.load_default()
 
 
-def _fit(text, font, width):
+def _fit(text, font, width, ellipsis=False):
     text = str(text or "")
-    while text and font.getlength(text) > width:
+    if font.getlength(text) <= width:
+        return text
+    marker = "..." if ellipsis else ""
+    while text and font.getlength(text + marker) > width:
         text = text[:-1]
-    return text
+    return text.rstrip() + marker
 
 
 def _wrap(text, font, width, limit=2):
@@ -81,7 +84,11 @@ def _wrap(text, font, width, limit=2):
         lines.append(current)
     if len(lines) > limit:
         lines = lines[:limit]
-        lines[-1] = _fit(lines[-1] + "...", font, width)
+        last = lines[-1]
+        # Prefer removing a complete word instead of displaying half of one.
+        while " " in last and font.getlength(last + "...") > width:
+            last = last.rsplit(" ", 1)[0]
+        lines[-1] = _fit(last, font, width - font.getlength("...")) + "..."
     return lines
 
 
@@ -192,9 +199,9 @@ def _render(state):
     else:
         line1, line2 = "SCANNING THE DUNGEON", "No monster in range"
         hp_text = ""
-    draw.text((3, 51), _fit(line1, body, W - 6), font=body, fill=0)
+    draw.text((3, 51), _fit(line1, body, W - 10, True), font=body, fill=0)
     hp_width = body.getlength(hp_text)
-    draw.text((3, 62), _fit(line2, body, W - hp_width - 12), font=body, fill=0)
+    draw.text((3, 62), _fit(line2, body, W - hp_width - 16, True), font=body, fill=0)
     if hp_text:
         draw.text((W - hp_width - 4, 62), hp_text, font=body, fill=0)
 
@@ -210,9 +217,9 @@ def _render(state):
     max_health = max(1, int(crawler.get("max_health") or 100))
     stamina = int(crawler.get("stamina") or 0)
     max_stamina = max(1, int(crawler.get("max_stamina") or 100))
-    draw.text((3, 160), _fit(name.upper(), bold, 60), font=bold, fill=0)
+    draw.text((3, 160), _fit(name.upper(), bold, 60, True), font=bold, fill=0)
     draw.text((76, 160), f"KILLS {kills}", font=tiny, fill=0)
-    draw.text((3, 170), _fit(f"MOOD: {mood.upper()}", tiny, W - 6), font=tiny, fill=0)
+    draw.text((3, 170), _fit(f"MOOD: {mood.upper()}", tiny, W - 10, True), font=tiny, fill=0)
     draw.text((3, 180), "HP", font=tiny, fill=0)
     draw.rectangle((19, 181, 57, 186), outline=0)
     draw.rectangle((20, 182, 20 + int(36 * health / max_health), 185), fill=0)
@@ -232,7 +239,7 @@ def _render(state):
             message = message[len(prefix):].strip()
             break
     y = 190
-    for line in _wrap(message, tiny, W - 10, 5):
+    for line in _wrap(message, tiny, W - 14, 5):
         draw.text((4, y), line, font=tiny, fill=0)
         y += 10
 
