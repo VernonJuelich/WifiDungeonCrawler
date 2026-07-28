@@ -144,6 +144,7 @@ for (const [name, definition] of [
   ['act', 'INTEGER DEFAULT 1'],
   ['quests_completed', 'INTEGER DEFAULT 0'],
   ['town_trips', 'INTEGER DEFAULT 0'],
+  ['last_town_visit', 'TEXT'],
   ['last_active', 'TEXT'],
   ['offline_seconds', 'INTEGER DEFAULT 0'],
   ['prestige', 'INTEGER DEFAULT 0'],
@@ -156,6 +157,7 @@ for (const [name, definition] of [
 ]) {
   if (!crawlerColumns.has(name)) db.exec(`ALTER TABLE crawler ADD COLUMN ${name} ${definition}`);
 }
+db.exec("UPDATE crawler SET last_town_visit=COALESCE(last_town_visit, datetime('now')) WHERE id=1");
 
 for (const [name, definition] of [
   ['sightings', 'INTEGER DEFAULT 1'],

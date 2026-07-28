@@ -21,6 +21,13 @@ progression.ensureQuest();
 setInterval(() => {
   db.prepare("UPDATE crawler SET last_active=datetime('now') WHERE id=1").run();
 }, 60000).unref();
+setInterval(() => {
+  const town = progression.visitTownIfDue();
+  if (town) {
+    const theft = world.townTheft();
+    bus.emit('event', { type: 'town', scheduled: true, ...town, theft });
+  }
+}, 60000).unref();
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));

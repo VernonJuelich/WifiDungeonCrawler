@@ -351,10 +351,10 @@ def _render_page(state, page):
         draw.text((4, 173), f"VIT {crawler.get('vitality',5)}", font=body, fill=0)
         draw.text((64, 173), f"INT {crawler.get('intelligence',5)}", font=body, fill=0)
         draw.line((3, 187, W - 4, 187), fill=0)
-        draw.text((4, 192), f"WEAPON +{crawler.get('weapon_power',0)}", font=tiny, fill=0)
-        draw.text((64, 192), f"ARMOR +{crawler.get('armor_power',0)}", font=tiny, fill=0)
+        draw.text((4, 192), f"WPN +{crawler.get('weapon_power',0)}", font=tiny, fill=0)
+        draw.text((64, 192), f"ARM +{crawler.get('armor_power',0)}", font=tiny, fill=0)
         draw.text((4, 205), f"GOLD {crawler.get('gold',0)}", font=tiny, fill=0)
-        draw.text((64, 205), f"PRESTIGE {crawler.get('prestige',0)}", font=tiny, fill=0)
+        draw.text((64, 205), f"PREST {crawler.get('prestige',0)}", font=tiny, fill=0)
         mood = str(crawler.get("mood") or "curious").upper()
         draw.text((4, 220), _fit(f"MOOD: {mood}", body, W - 8, True), font=body, fill=0)
         return image
@@ -366,8 +366,8 @@ def _render_page(state, page):
         draw.text((W - body.getlength(floor_text) - 4, 25), floor_text, font=body, fill=0)
 
         y = 39
-        for line in _wrap(quest.get("title") or "Awaiting bureaucratic destiny", bold, W - 8, 2):
-            draw.text((4, y), line, font=bold, fill=0)
+        for line in _wrap(quest.get("title") or "Awaiting bureaucratic destiny", body, W - 12, 2):
+            draw.text((4, y), line, font=body, fill=0)
             y += 12
         progress = int(quest.get("progress") or 0)
         required = max(1, int(quest.get("required") or 1))
@@ -383,7 +383,13 @@ def _render_page(state, page):
         y = 110
         for daily in (state.get("dailyQuests") or [])[:3]:
             done = daily.get("status") == "completed"
-            label = f"{'X' if done else '>'} {daily.get('title','')}"
+            short_titles = {
+                "discover": "NEW ROOMS",
+                "battle": "BATTLE TURNS",
+                "victory": "MONSTERS",
+            }
+            title = short_titles.get(str(daily.get("code") or "").lower(), daily.get("title", "ORDER"))
+            label = f"{'X' if done else '>'} {str(title).upper()}"
             daily_progress = int(daily.get("progress") or 0)
             daily_required = max(1, int(daily.get("required") or 1))
             count_text = f"{daily_progress}/{daily_required}"
@@ -397,7 +403,7 @@ def _render_page(state, page):
         draw.line((3, 194, W - 4, 194), fill=0)
         description = quest.get("description") or "The plot remains administratively mandatory."
         y = 200
-        for line in _wrap(description, tiny, W - 10, 4):
+        for line in _wrap(description, tiny, W - 16, 3):
             draw.text((4, y), line, font=tiny, fill=0)
             y += 10
         return image
@@ -432,12 +438,12 @@ def _render_page(state, page):
             friendship_fill = W - 11
         draw.rectangle((5, 155, 5 + friendship_fill, 161), fill=0)
         draw.text((4, 169), f"HEALS {donut.get('heals',0)}", font=tiny, fill=0)
-        draw.text((43, 169), f"FINDS {donut.get('finds',0)}", font=tiny, fill=0)
-        draw.text((82, 169), f"THEFTS {donut.get('steals',0)}", font=tiny, fill=0)
+        draw.text((64, 169), f"FINDS {donut.get('finds',0)}", font=tiny, fill=0)
+        draw.text((4, 181), f"THEFTS {donut.get('steals',0)}", font=tiny, fill=0)
         action_text = action or "judging Carl"
         message = f"Donut is {action_text}. No witnesses. No refunds."
-        y = 185
-        for line in _wrap(message, body, W - 10, 4):
+        y = 197
+        for line in _wrap(message, body, W - 14, 4):
             draw.text((4, y), line, font=body, fill=0)
             y += 12
         return image
@@ -455,22 +461,28 @@ def _render_page(state, page):
 
         weapon = next((item for item in loot if item.get("equipped") and item.get("power", 0)), None)
         armor = next((item for item in loot if item.get("equipped") and item.get("defense", 0)), None)
-        draw.text((4, 132), f"WEAPON +{crawler.get('weapon_power', 0)}", font=tiny, fill=0)
-        draw.text((4, 142), _fit((weapon or {}).get("item_name") or "Barely armed", tiny, W - 8, True), font=tiny, fill=0)
-        draw.text((4, 156), f"ARMOR +{crawler.get('armor_power', 0)}", font=tiny, fill=0)
-        draw.text((4, 166), _fit((armor or {}).get("item_name") or "Optimistic clothing", tiny, W - 8, True), font=tiny, fill=0)
+        draw.text((4, 132), f"WPN +{crawler.get('weapon_power', 0)}", font=tiny, fill=0)
+        y = 142
+        for line in _wrap((weapon or {}).get("item_name") or "Barely armed", tiny, W - 12, 2):
+            draw.text((4, y), line, font=tiny, fill=0)
+            y += 10
+        draw.text((4, 163), f"ARM +{crawler.get('armor_power', 0)}", font=tiny, fill=0)
+        y = 173
+        for line in _wrap((armor or {}).get("item_name") or "Optimistic clothing", tiny, W - 12, 2):
+            draw.text((4, y), line, font=tiny, fill=0)
+            y += 10
 
-        draw.line((3, 180, W - 4, 180), fill=0)
+        draw.line((3, 194, W - 4, 194), fill=0)
         if latest:
             rarity = str(latest.get("rarity") or "common").upper()
-            draw.text((4, 185), f"LATEST DROP · {rarity}", font=tiny, fill=0)
-            y = 197
-            for line in _wrap(latest.get("item_name") or "Questionable object", body, W - 10, 3):
+            draw.text((4, 199), f"LATEST · {rarity}", font=tiny, fill=0)
+            y = 211
+            for line in _wrap(latest.get("item_name") or "Questionable object", body, W - 14, 3):
                 draw.text((4, y), line, font=body, fill=0)
                 y += 12
         else:
-            draw.text((4, 190), "INVENTORY EMPTY", font=bold, fill=0)
-            draw.text((4, 206), "Donut blames Carl.", font=body, fill=0)
+            draw.text((4, 202), "INVENTORY EMPTY", font=bold, fill=0)
+            draw.text((4, 218), "Donut blames Carl.", font=body, fill=0)
         return image
     else:
         recap = (state.get("weeklyRecap") or {}).get("message") or "The accountants are still counting."
@@ -490,15 +502,15 @@ def _render_page(state, page):
         draw.line((3, 85, W - 4, 85), fill=0)
         draw.text((4, 91), "WEEKLY RECAP", font=bold, fill=0)
         y = 106
-        for line in _wrap(recap, tiny, W - 10, 9):
+        for line in _wrap(recap, tiny, W - 18, 9):
             draw.text((4, y), line, font=tiny, fill=0)
             y += 10
 
         draw.line((3, 199, W - 4, 199), fill=0)
         draw.text((4, 205), f"GOLD {crawler.get('gold',0)}", font=tiny, fill=0)
-        draw.text((64, 205), f"PRESTIGE {crawler.get('prestige',0)}", font=tiny, fill=0)
+        draw.text((64, 205), f"PREST {crawler.get('prestige',0)}", font=tiny, fill=0)
         region_name = regions[0].get("name") if regions else "No region mapped"
-        draw.text((4, 219), _fit(region_name, tiny, W - 8, True), font=tiny, fill=0)
+        draw.text((4, 219), _fit(region_name, tiny, W - 14, True), font=tiny, fill=0)
         mood = str(crawler.get("mood") or "curious").upper()
         draw.text((4, 232), _fit(f"MOOD: {mood}", tiny, W - 8, True), font=tiny, fill=0)
         return image

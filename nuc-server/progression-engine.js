@@ -1,5 +1,6 @@
 const db = require('./db');
 const { addXP } = require('./game-engine');
+const TOWN_INTERVAL_SECONDS = 2 * 60 * 60;
 
 const QUEST_ADJECTIVES = [
   'Unreasonably Dangerous', 'Administratively Mandatory', 'Probably Cursed',
@@ -88,12 +89,21 @@ function visitTownIfNeeded(force = false) {
   db.prepare(`
     UPDATE crawler SET gold=gold+?-?,town_trips=town_trips+1,
       weapon_power=weapon_power+?,armor_power=armor_power+?,
-      health=max_health,stamina=max_stamina,mood='refreshed' WHERE id=1
+      health=max_health,stamina=max_stamina,mood='refreshed',
+      last_town_visit=datetime('now') WHERE id=1
   `).run(sale.gold, upgrade ? upgradeCost : 0, weapon, armor);
   const purchase = upgrade ? (weapon ? 'weapon polishing' : 'armor tailoring') : 'absolutely nothing useful';
   const message = `Town trip: sold ${sale.count} items for ${sale.gold} gold and purchased ${purchase}.`;
   record('town', message, { sold: sale.count, gold: sale.gold, purchase });
   return { message, sold: sale.count, gold: sale.gold, purchase };
+}
+
+function visitTownIfDue() {
+  const crawler = db.prepare('SELECT last_town_visit,created_at FROM crawler WHERE id=1').get();
+  const timestamp = crawler.last_town_visit || crawler.created_at;
+  const lastVisit = Date.parse(`${timestamp || ''}Z`) || Date.now();
+  if (Math.floor((Date.now() - lastVisit) / 1000) < TOWN_INTERVAL_SECONDS) return null;
+  return visitTownIfNeeded(true);
 }
 
 function snapshot() {
@@ -133,6 +143,6 @@ function progressionState() {
 }
 
 module.exports = {
-  ensureQuest, advanceQuest, inventoryState, visitTownIfNeeded,
+  ensureQuest, advanceQuest, inventoryState, visitTownIfNeeded, visitTownIfDue,
   snapshot, applyOfflineProgress, progressionState,
 };
