@@ -44,6 +44,7 @@ function renderAll() {
   renderLoot(state.loot);
   renderAchievements(state.achievements);
   renderProgression(state);
+  renderEncounterQueue(state.monsters);
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -79,6 +80,10 @@ function aiTier(score) {
 
 function escHtml(str) {
   return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function cleanMessage(message) {
+  return String(message || '').replace(/^(THE SYSTEM|SYSTEM|ANNOUNCER):\s*/i, '');
 }
 
 // ── Renderers ─────────────────────────────────────────────────────────────────
@@ -128,7 +133,9 @@ function renderMonsters(monsters) {
     grid.innerHTML = '<div class="empty-dungeon">No monsters detected. The dungeon is silent. That\'s worse.</div>';
     return;
   }
-  const grouped = groupMonsters(monsters);
+  const grouped = groupMonsters(monsters)
+    .sort((a, b) => (a.status === 'dead') - (b.status === 'dead') || (b.signal || -99) - (a.signal || -99))
+    .slice(0, 24);
   grid.innerHTML = grouped.map(m => {
     const vendor  = m.vendor ? escHtml(m.vendor) : '';
     const channel = m.channel ? `CH ${m.channel}` : '';
@@ -180,7 +187,7 @@ function renderEvents(events) {
     return `<div class="event-entry ${escHtml(e.type || '')}">
       <span class="event-icon">${icon}</span>
       <span class="event-time">${time}</span>
-      <span class="event-msg">${escHtml(e.message || e.type)}</span>
+      <span class="event-msg">${escHtml(cleanMessage(e.message || e.type))}</span>
     </div>`;
   }).join('') + boot;
 }
@@ -215,6 +222,25 @@ function renderAchievements(achievements) {
       <div class="achievement-desc">${escHtml(a.description)}</div>
     </div>
   `).join('');
+}
+
+function renderEncounterQueue(monsters) {
+  const queue = document.getElementById('encounter-queue');
+  const active = (monsters || []).filter(m => m.status === 'engaged').slice(0, 4);
+  if (!active.length) {
+    queue.innerHTML = '<div class="empty-state">Move within signal range to begin battle...</div>';
+    return;
+  }
+  queue.innerHTML = active.map(m => {
+    const max = Math.max(1, m.max_hp || 1);
+    const remaining = Math.max(0, m.hp || 0);
+    const progress = Math.max(0, Math.min(100, (1 - remaining / max) * 100));
+    return `<div class="encounter-item encounter-running">
+      <div class="encounter-title">${m.is_boss ? 'BOSS · ' : ''}${escHtml(m.ssid || '[Hidden]')}</div>
+      <div class="progress-track"><div class="progress-fill battle-fill" style="width:${progress}%"></div>
+        <span>${remaining} / ${max} HP</span></div>
+    </div>`;
+  }).join('');
 }
 
 function renderProgression(s) {
@@ -278,7 +304,7 @@ function renderHistory(history) {
 function showAnnouncement(msg) {
   const bar = document.getElementById('announcement-bar');
   const txt = document.getElementById('announcement-text');
-  txt.textContent = msg;
+  txt.textContent = cleanMessage(msg);
   bar.classList.remove('hidden');
   clearTimeout(bar._timer);
   bar._timer = setTimeout(() => bar.classList.add('hidden'), 8000);
@@ -399,7 +425,7 @@ function addEventEntry(data) {
   div.className = `event-entry ${data.type || ''}`;
   const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   const icon = EVENT_ICONS[data.type] || '·';
-  div.innerHTML = `<span class="event-icon">${icon}</span><span class="event-time">${time}</span><span class="event-msg">${escHtml(data.message || data.type)}</span>`;
+  div.innerHTML = `<span class="event-icon">${icon}</span><span class="event-time">${time}</span><span class="event-msg">${escHtml(cleanMessage(data.message || data.type))}</span>`;
   log.insertBefore(div, log.firstChild);
   while (log.children.length > 50) log.removeChild(log.lastChild);
 }
