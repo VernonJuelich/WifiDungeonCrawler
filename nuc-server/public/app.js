@@ -234,12 +234,21 @@ function renderWorld(s) {
     <div class="recap-weekly-text">${escHtml(s.weeklyRecap?.message || 'The dungeon accountants are still counting.')}</div>`;
   const difficulty = document.getElementById('difficulty-control');
   const display = document.getElementById('display-control');
+  const displayPage = s.crawler?.display_page || 'auto';
+  const displayLabels = {
+    auto: 'AUTO ROTATION', battle: 'BATTLE', character: 'CHARACTER', quest: 'QUEST',
+    donut: 'DONUT', loot: 'EQUIPMENT', summary: 'SUMMARY', recap: 'RECAP',
+  };
+  const displayStatus = document.getElementById('display-mode-status');
   const equipment = document.getElementById('equipment-control');
   if (difficulty) difficulty.value = s.crawler?.difficulty || 'normal';
-  if (display) display.value = s.crawler?.display_page || 'auto';
+  if (display) display.value = displayPage;
+  if (displayStatus) displayStatus.textContent = displayLabels[displayPage] || 'AUTO ROTATION';
   if (equipment) equipment.value = s.crawler?.equipment_priority || 'balanced';
   document.querySelectorAll('.display-page-buttons button[data-page]').forEach(button => {
-    button.classList.toggle('active', button.dataset.page === (s.crawler?.display_page || 'auto'));
+    const active = button.dataset.page === displayPage;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
   });
 }
 
@@ -721,7 +730,7 @@ function initControls() {
   });
   document.getElementById('difficulty-control').addEventListener('change', e =>
     sendControl('difficulty', e.target.value));
-  document.getElementById('display-control').addEventListener('change', e =>
+  document.getElementById('display-control')?.addEventListener('change', e =>
     sendControl('display_page', e.target.value));
   document.getElementById('equipment-control').addEventListener('change', e =>
     sendControl('equipment_priority', e.target.value));

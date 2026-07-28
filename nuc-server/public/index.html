@@ -149,27 +149,22 @@
           </div>
 
           <div class="control-group display-control-group">
-            <div class="control-group-title">DISPLAY ON DONUT</div>
-            <label class="control-field">
-              <span>PAGE MODE</span>
-              <select id="display-control">
-                <option value="auto">AUTO PAGES</option><option value="battle">BATTLE</option>
-                <option value="character">CHARACTER</option><option value="quest">QUEST</option>
-                <option value="donut">DONUT</option><option value="loot">EQUIPMENT</option>
-                <option value="summary">SUMMARY</option><option value="recap">RECAP</option>
-              </select>
-            </label>
+            <div class="display-control-heading">
+              <div class="control-group-title">DISPLAY ON DONUT</div>
+              <span id="display-mode-status">AUTO ROTATION</span>
+            </div>
+            <p class="control-help">Choose what the e-ink screen shows. Auto resumes normal page rotation.</p>
             <div class="display-page-buttons">
-              <button type="button" data-page="auto">AUTO</button>
+              <button type="button" data-page="auto">AUTO ROTATION</button>
               <button type="button" data-page="battle">BATTLE</button>
-              <button type="button" data-page="character">CARL</button>
+              <button type="button" data-page="character">CHARACTER</button>
               <button type="button" data-page="quest">QUEST</button>
               <button type="button" data-page="donut">DONUT</button>
-              <button type="button" data-page="loot">LOOT</button>
+              <button type="button" data-page="loot">EQUIPMENT</button>
               <button type="button" data-page="summary">SUMMARY</button>
               <button type="button" data-page="recap">RECAP</button>
             </div>
-            <button class="refresh-display-button" data-action="refresh">REFRESH DISPLAY NOW</button>
+            <button class="refresh-display-button" data-action="refresh">REDRAW CURRENT PAGE</button>
           </div>
 
           <div class="control-group">

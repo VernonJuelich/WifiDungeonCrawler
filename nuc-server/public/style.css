@@ -1112,18 +1112,55 @@ main {
 
 .control-field select { width: 100%; }
 
-.display-control-group .control-field { margin-bottom: 9px; }
+.display-control-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 5px;
+}
+
+.display-control-heading .control-group-title { margin: 0; }
+
+#display-mode-status {
+  padding: 4px 7px;
+  color: #fff;
+  background: #68251f;
+  border-radius: 999px;
+  font: 800 9px/1 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: .6px;
+  white-space: nowrap;
+}
+
+.control-help {
+  margin: 0 0 10px;
+  color: #625c50;
+  font: 600 11px/1.4 ui-sans-serif, system-ui, sans-serif;
+}
 
 .display-page-buttons {
   grid-column: auto;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 7px;
   padding: 0;
 }
 
+.display-page-buttons button {
+  position: relative;
+  text-align: left;
+  padding-left: 13px !important;
+}
+
+.display-page-buttons button.active::after {
+  content: '●';
+  position: absolute;
+  right: 11px;
+  color: #f3d78c;
+}
+
 #game-controls .refresh-display-button {
   width: 100%;
-  margin-top: 8px;
+  margin-top: 10px;
   color: #fff;
   background: #4b463c;
   border-color: #4b463c;
@@ -1249,7 +1286,7 @@ main {
   .monster-icon-wrap { height: 86px; }
   .monster-icon { width: 82px; height: 82px; }
   #game-controls { grid-template-columns: 1fr; }
-  .display-page-buttons { grid-column: 1; grid-template-columns: repeat(2, 1fr); }
+  .display-page-buttons { grid-column: 1; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .control-action-grid, .control-settings-grid { grid-template-columns: 1fr; }
   #game-controls select, #game-controls button { font-size: 13px; }
   .audience-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
