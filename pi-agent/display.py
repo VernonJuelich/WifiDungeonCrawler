@@ -363,7 +363,7 @@ def _render_page(state, page):
         act_text = f"ACT {crawler.get('act',1)}"
         floor_text = f"FLOOR {crawler.get('floor',1)}"
         draw.text((4, 25), act_text, font=body, fill=0)
-        draw.text((W - body.getlength(floor_text) - 4, 25), floor_text, font=body, fill=0)
+        draw.text((W - body.getlength(floor_text) - 9, 25), floor_text, font=body, fill=0)
 
         y = 39
         for line in _wrap(quest.get("title") or "Awaiting bureaucratic destiny", body, W - 12, 2):
@@ -374,9 +374,9 @@ def _render_page(state, page):
         draw.rectangle((4, 66, W - 5, 74), outline=0)
         draw.rectangle((5, 67, 5 + int((W - 11) * min(1, progress / required)), 73), fill=0)
         progress_text = f"{progress}/{required}"
-        draw.text((W - tiny.getlength(progress_text) - 5, 77), progress_text, font=tiny, fill=0)
+        draw.text((W - tiny.getlength(progress_text) - 9, 77), progress_text, font=tiny, fill=0)
         reward = f"{quest.get('reward_xp',0)} XP · {quest.get('reward_gold',0)} GOLD"
-        draw.text((4, 77), _fit(reward, tiny, W - tiny.getlength(progress_text) - 12, True), font=tiny, fill=0)
+        draw.text((4, 77), _fit(reward, tiny, W - tiny.getlength(progress_text) - 17, True), font=tiny, fill=0)
 
         draw.line((3, 91, W - 4, 91), fill=0)
         draw.text((4, 96), "DAILY ORDERS", font=bold, fill=0)
@@ -393,8 +393,8 @@ def _render_page(state, page):
             daily_progress = int(daily.get("progress") or 0)
             daily_required = max(1, int(daily.get("required") or 1))
             count_text = f"{daily_progress}/{daily_required}"
-            draw.text((4, y), _fit(label, tiny, W - tiny.getlength(count_text) - 12, True), font=tiny, fill=0)
-            draw.text((W - tiny.getlength(count_text) - 4, y), count_text, font=tiny, fill=0)
+            draw.text((4, y), _fit(label, tiny, W - tiny.getlength(count_text) - 17, True), font=tiny, fill=0)
+            draw.text((W - tiny.getlength(count_text) - 9, y), count_text, font=tiny, fill=0)
             draw.rectangle((4, y + 10, W - 5, y + 15), outline=0)
             fill = int((W - 11) * min(1, daily_progress / daily_required))
             draw.rectangle((5, y + 11, 5 + fill, y + 14), fill=0)
@@ -491,13 +491,13 @@ def _render_page(state, page):
         name = str(crawler.get("name") or "Carl").upper()
         level_text = f"LV {crawler.get('level',1)}"
         draw.text((4, 25), _fit(name, bold, 76, True), font=bold, fill=0)
-        draw.text((W - body.getlength(level_text) - 4, 27), level_text, font=body, fill=0)
+        draw.text((W - body.getlength(level_text) - 9, 27), level_text, font=body, fill=0)
         draw.text((4, 43), f"KILLS {crawler.get('kills',0)}", font=body, fill=0)
         draw.text((64, 43), f"FLOOR {crawler.get('floor',1)}", font=body, fill=0)
         draw.text((4, 58), f"ROOMS {len(state.get('monsters') or [])}", font=tiny, fill=0)
-        draw.text((64, 58), f"REGIONS {len(regions)}", font=tiny, fill=0)
+        draw.text((64, 58), f"REGION {len(regions)}", font=tiny, fill=0)
         draw.text((4, 70), f"BOSSES {len(bosses)}", font=tiny, fill=0)
-        draw.text((64, 70), f"QUESTS {crawler.get('quests_completed',0)}", font=tiny, fill=0)
+        draw.text((64, 70), f"QUEST {crawler.get('quests_completed',0)}", font=tiny, fill=0)
 
         draw.line((3, 85, W - 4, 85), fill=0)
         draw.text((4, 91), "WEEKLY RECAP", font=bold, fill=0)
