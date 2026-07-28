@@ -63,6 +63,14 @@ def _fit(text, font, width):
 def _wrap(text, font, width, limit=2):
     words, lines, current = str(text or "").split(), [], ""
     for word in words:
+        # Split unusually long names/words so they cannot cross the border.
+        while font.getlength(word) > width:
+            chunk = _fit(word, font, width)
+            if current:
+                lines.append(current)
+                current = ""
+            lines.append(chunk)
+            word = word[len(chunk):]
         candidate = f"{current} {word}".strip()
         if current and font.getlength(candidate) > width:
             lines.append(current)
@@ -71,7 +79,10 @@ def _wrap(text, font, width, limit=2):
             current = candidate
     if current:
         lines.append(current)
-    return lines[:limit]
+    if len(lines) > limit:
+        lines = lines[:limit]
+        lines[-1] = _fit(lines[-1] + "...", font, width)
+    return lines
 
 
 def _asset(name, size, invert=False):
@@ -214,9 +225,8 @@ def _render(state):
         if message.upper().startswith(prefix):
             message = message[len(prefix):].strip()
             break
-    draw.text((3, 190), "ANNOUNCER:", font=bold, fill=0)
-    y = 201
-    for line in _wrap(message, tiny, W - 8, 3):
+    y = 190
+    for line in _wrap(message, tiny, W - 10, 5):
         draw.text((4, y), line, font=tiny, fill=0)
         y += 10
 
