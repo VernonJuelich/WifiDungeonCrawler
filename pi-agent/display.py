@@ -111,23 +111,58 @@ def _paste_center(canvas, image, y):
 
 
 def _character_frame(target, events, has_monsters, crawler):
-    """Rotate the user-curated Bjorn artwork by zero-player game state."""
+    """Select a Dungeon Crawler Carl pose from the current game state."""
     latest_type = (events[0].get("type") if events else "") or ""
+    latest_data = {}
+    if events:
+        try:
+            latest_data = events[0].get("data") or {}
+            if isinstance(latest_data, str):
+                latest_data = json.loads(latest_data)
+        except (TypeError, ValueError):
+            latest_data = {}
     hour = time.localtime().tm_hour
     health = int(crawler.get("health") or 0)
     max_health = max(1, int(crawler.get("max_health") or 100))
     stamina = int(crawler.get("stamina") or 0)
 
-    if latest_type == "town":
+    if latest_type == "dead":
+        group = "dead"
+    elif latest_type == "defeat":
+        group = "dead"
+    elif latest_type in ("level_up", "floor_up", "act_up"):
+        group = "level-up"
+    elif latest_type in ("victory", "achievement"):
+        group = "victory"
+    elif latest_type == "loot":
+        group = "looting"
+    elif latest_type == "town":
         group = "shopping"
-    elif latest_type == "defeat" or health < max_health * 0.35:
+    elif latest_type == "quest_complete":
+        group = "reading"
+    elif latest_type == "monster_spotted":
+        group = "scared"
+    elif latest_type == "offline":
+        group = "drink-coffee"
+    elif latest_type == "battle_turn" and latest_data.get("critical"):
+        group = "critical-hit"
+    elif latest_type == "battle_turn" and latest_data.get("enemyHits"):
+        group = "take-damage"
+    elif latest_type == "battle_turn" and latest_data.get("bossCharge"):
+        group = "cast-spell"
+    elif latest_type in ("encounter", "battle_turn"):
+        group = "attack" if latest_data.get("hit", True) else "block"
+    elif health < max_health * 0.35:
         group = "healing"
     elif stamina < 20 or hour < 6 or hour >= 22:
         group = "resting"
     elif target and target.get("status") == "engaged":
-        group = "attacking"
+        group = "attack"
+    elif has_monsters:
+        group = ("walk", "run")[int(time.time() // UPDATE_SEC) % 2]
     else:
-        group = "idle"
+        idle_groups = ("idle", "thinking", "talking", "drink-coffee")
+        group = idle_groups[int(time.time() // UPDATE_SEC) % len(idle_groups)]
 
     frames = sorted(glob.glob(f"{CHARACTER_ROOT}/{group}/*.bmp"))
 
@@ -136,10 +171,6 @@ def _character_frame(target, events, has_monsters, crawler):
         try:
             frame = Image.open(frame_path).convert("L")
             frame.thumbnail((105, 83), Image.Resampling.LANCZOS)
-            # Bjorn's source animation frames include a thin baked-in floor line.
-            # Trim only its bottom edge so Bjorn's feet and shadow stay visible.
-            if frame.height > 3:
-                frame = frame.crop((0, 0, frame.width, frame.height - 3))
             return frame.convert("1")
         except Exception:
             pass
