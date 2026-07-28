@@ -90,6 +90,9 @@ function renderWorld(s) {
   if (difficulty) difficulty.value = s.crawler?.difficulty || 'normal';
   if (display) display.value = s.crawler?.display_page || 'auto';
   if (equipment) equipment.value = s.crawler?.equipment_priority || 'balanced';
+  document.querySelectorAll('.display-page-buttons button[data-page]').forEach(button => {
+    button.classList.toggle('active', button.dataset.page === (s.crawler?.display_page || 'auto'));
+  });
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -556,6 +559,11 @@ async function sendControl(action, value = true) {
 
 function initControls() {
   document.getElementById('game-controls').addEventListener('click', e => {
+    const pageButton = e.target.closest('button[data-page]');
+    if (pageButton) {
+      sendControl('display_page', pageButton.dataset.page);
+      return;
+    }
     const button = e.target.closest('button[data-action]');
     if (!button) return;
     const action = button.dataset.action;

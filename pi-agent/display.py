@@ -14,6 +14,7 @@ from config import NUC_BASE
 
 W, H = 122, 250
 UPDATE_SEC = 30
+PAGE_ROTATE_SEC = 60
 ASSET_ROOT = "/home/bjorn/Bjorn/resources/images/static"
 CHARACTER_ROOT = "/home/bjorn/dungeon/assets/characters"
 DONUT_ROOT = "/home/bjorn/dungeon/assets/donut"
@@ -357,15 +358,47 @@ def _render_page(state, page):
         return image
     elif page == "quest":
         quest = state.get("quest") or {}
-        rows = [
-            f"ACT {crawler.get('act',1)} · FLOOR {crawler.get('floor',1)}",
-            quest.get("title") or "Awaiting destiny",
-            f"QUEST {quest.get('progress',0)} / {quest.get('required',0)}",
-        ]
-        y = 65
-        for daily in state.get("dailyQuests") or []:
-            rows.append(f"{'X' if daily.get('status') == 'completed' else '>'} {daily.get('title','')}")
-            rows.append(f"  {daily.get('progress',0)}/{daily.get('required',0)}")
+        act_text = f"ACT {crawler.get('act',1)}"
+        floor_text = f"FLOOR {crawler.get('floor',1)}"
+        draw.text((4, 25), act_text, font=body, fill=0)
+        draw.text((W - body.getlength(floor_text) - 4, 25), floor_text, font=body, fill=0)
+
+        y = 39
+        for line in _wrap(quest.get("title") or "Awaiting bureaucratic destiny", bold, W - 8, 2):
+            draw.text((4, y), line, font=bold, fill=0)
+            y += 12
+        progress = int(quest.get("progress") or 0)
+        required = max(1, int(quest.get("required") or 1))
+        draw.rectangle((4, 66, W - 5, 74), outline=0)
+        draw.rectangle((5, 67, 5 + int((W - 11) * min(1, progress / required)), 73), fill=0)
+        progress_text = f"{progress}/{required}"
+        draw.text((W - tiny.getlength(progress_text) - 5, 77), progress_text, font=tiny, fill=0)
+        reward = f"{quest.get('reward_xp',0)} XP · {quest.get('reward_gold',0)} GOLD"
+        draw.text((4, 77), _fit(reward, tiny, W - tiny.getlength(progress_text) - 12, True), font=tiny, fill=0)
+
+        draw.line((3, 91, W - 4, 91), fill=0)
+        draw.text((4, 96), "DAILY ORDERS", font=bold, fill=0)
+        y = 110
+        for daily in (state.get("dailyQuests") or [])[:3]:
+            done = daily.get("status") == "completed"
+            label = f"{'X' if done else '>'} {daily.get('title','')}"
+            daily_progress = int(daily.get("progress") or 0)
+            daily_required = max(1, int(daily.get("required") or 1))
+            count_text = f"{daily_progress}/{daily_required}"
+            draw.text((4, y), _fit(label, tiny, W - tiny.getlength(count_text) - 12, True), font=tiny, fill=0)
+            draw.text((W - tiny.getlength(count_text) - 4, y), count_text, font=tiny, fill=0)
+            draw.rectangle((4, y + 10, W - 5, y + 15), outline=0)
+            fill = int((W - 11) * min(1, daily_progress / daily_required))
+            draw.rectangle((5, y + 11, 5 + fill, y + 14), fill=0)
+            y += 27
+
+        draw.line((3, 194, W - 4, 194), fill=0)
+        description = quest.get("description") or "The plot remains administratively mandatory."
+        y = 200
+        for line in _wrap(description, tiny, W - 10, 4):
+            draw.text((4, y), line, font=tiny, fill=0)
+            y += 10
+        return image
     elif page == "donut":
         donut = state.get("companion") or {}
         action = str(donut.get("last_action") or "").lower()
@@ -467,7 +500,7 @@ def _render(state):
         return _render_battle(state)
     if requested == "auto":
         pages = ("battle", "character", "quest", "donut", "loot", "summary")
-        requested = pages[int(time.time() // 120) % len(pages)]
+        requested = pages[int(time.time() // PAGE_ROTATE_SEC) % len(pages)]
     return _render_battle(state) if requested == "battle" else _render_page(state, requested)
 
 
