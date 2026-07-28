@@ -250,7 +250,7 @@ def _render_battle(state):
         icon = _asset(icon_name, (15, 15))
         if icon:
             image.paste(icon, (x, 24))
-        draw.text((x + 17, 26), str(value), font=bold, fill=0)
+        draw.text((x + 17, 26), _fit(str(value), bold, W - x - 21, True), font=bold, fill=0)
     draw.line((1, 44, W - 2, 44), fill=0)
 
     # Two compact status lines above a large central character.
@@ -265,11 +265,11 @@ def _render_battle(state):
     else:
         line1, line2 = "SCANNING THE DUNGEON", "No monster in range"
         hp_text = ""
-    draw.text((3, 47), _fit(line1, body, W - 10, True), font=body, fill=0)
+    draw.text((3, 47), _fit(line1, body, W - 16, True), font=body, fill=0)
     hp_width = body.getlength(hp_text)
-    draw.text((3, 58), _fit(line2, body, W - hp_width - 16, True), font=body, fill=0)
+    draw.text((3, 58), _fit(line2, body, W - hp_width - 20, True), font=body, fill=0)
     if hp_text:
-        draw.text((W - hp_width - 4, 58), hp_text, font=body, fill=0)
+        draw.text((W - hp_width - 6, 58), hp_text, font=body, fill=0)
 
     portrait = _character_frame(target, events, bool(monsters), crawler)
     _paste_center(image, portrait, 68)
@@ -286,8 +286,8 @@ def _render_battle(state):
     quest_progress = int(quest.get("progress") or 0)
     quest_required = int(quest.get("required") or 0)
     draw.text((3, 151), _fit(name.upper(), bold, 60, True), font=bold, fill=0)
-    draw.text((65, 152), f"QUEST {quest_progress}/{quest_required}", font=tiny, fill=0)
-    draw.text((3, 163), _fit(f"MOOD: {mood.upper()}", tiny, W - 10, True), font=tiny, fill=0)
+    draw.text((65, 152), _fit(f"QUEST {quest_progress}/{quest_required}", tiny, W - 72, True), font=tiny, fill=0)
+    draw.text((3, 163), _fit(f"MOOD: {mood.upper()}", tiny, W - 16, True), font=tiny, fill=0)
     draw.text((3, 175), "HP", font=tiny, fill=0)
     draw.rectangle((19, 176, 57, 181), outline=0)
     draw.rectangle((20, 177, 20 + int(36 * health / max_health), 180), fill=0)
@@ -307,7 +307,7 @@ def _render_battle(state):
             message = message[len(prefix):].strip()
             break
     y = 186
-    for line in _wrap(message, tiny, W - 14, 5):
+    for line in _wrap(message, tiny, W - 22, 5):
         draw.text((4, y), line, font=tiny, fill=0)
         y += 10
 
