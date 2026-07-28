@@ -56,6 +56,10 @@ function renderAll() {
 function renderAnnouncerCommentary(s) {
   const c = s.crawler || {};
   const q = s.quest || {};
+  const ai = s.narrator || {};
+  const aiLabel = ai.available === false
+    ? 'TEMPLATE FALLBACK'
+    : `LOCAL AI · ${String(ai.activeModel || ai.configuredModel || 'OLLAMA').toUpperCase()}`;
   const progress = Number(q.progress || 0);
   const required = Number(q.required || 0);
   const remaining = Math.max(0, required - progress);
@@ -69,14 +73,14 @@ function renderAnnouncerCommentary(s) {
 
   const notes = {
     'announcer-character': {
-      label: 'ANNOUNCER ASSESSMENT',
+      label: `ANNOUNCER ASSESSMENT · ${aiLabel}`,
       lines: [
         `Crawler Carl is level ${c.level || 1}. This is technically growth.`,
         `${c.kills || 0} kills recorded. Competence remains under investigation.`,
       ],
     },
     'announcer-quest': {
-      label: 'QUEST OUTLOOK',
+      label: `QUEST OUTLOOK · ${aiLabel}`,
       lines: required
         ? [
             `${progress} of ${required} mandatory inconveniences completed.`,
@@ -90,7 +94,7 @@ function renderAnnouncerCommentary(s) {
           ],
     },
     'announcer-broadcast': {
-      label: 'LIVE COMMENTARY',
+      label: `LIVE COMMENTARY · ${aiLabel}`,
       lines: [
         recent ? cleanMessage(recent.message) : 'Nothing dramatic has happened. Disappointing.',
         'Remember: confidence is not armor, despite Carl’s testing.',

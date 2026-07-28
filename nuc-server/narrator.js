@@ -1,23 +1,40 @@
 const http = require('http');
 
-const OLLAMA_HOST = '127.0.0.1';
-const OLLAMA_PORT = 11434;
-const MODEL = process.env.OLLAMA_MODEL || 'qwen2.5:7b';
+const OLLAMA_HOST = process.env.OLLAMA_HOST || '127.0.0.1';
+const OLLAMA_PORT = Number(process.env.OLLAMA_PORT || 11434);
+const MODEL = process.env.OLLAMA_MODEL || 'llama3.1:8b';
+const FALLBACK_MODEL = process.env.OLLAMA_FALLBACK_MODEL || 'qwen3:4b';
+const recentLines = [];
+const narratorStatus = {
+  enabled: process.env.NARRATION_ENABLED !== '0',
+  provider: 'ollama',
+  configuredModel: MODEL,
+  fallbackModel: FALLBACK_MODEL,
+  activeModel: null,
+  available: null,
+  warming: false,
+  generating: false,
+  generated: 0,
+  fallbacks: 0,
+  lastError: null,
+};
 
-const SYSTEM_PROMPT = `You are THE ANNOUNCER — an original AI personality running a lethal-looking but harmless WiFi dungeon reality show.
-You are smug, theatrical, sarcastic, judgmental, fourth-wall aware, and delighted by the crawler's bad decisions.
-Compliments must sound backhanded. Treat minor failures like premium entertainment and victories like barely acceptable competence.
-Keep responses SHORT — 1-2 sentences max. Use ALL CAPS sparingly for comic emphasis.
-Never break character. Broadcast WiFi networks become fictional monsters in a harmless signal-strength RPG. Combat is entirely simulated.`;
+const SYSTEM_PROMPT = `You are a smug, theatrical announcer for a harmless WiFi dungeon RPG.
+Write one short, original, sarcastic sentence. Celebrate failure as entertainment and
+treat success as barely acceptable. Never explain yourself or leave character.`;
 
-async function generateNarration(prompt) {
-  if (process.env.NARRATION_ENABLED === '0') return null;
+function requestNarration(model, prompt, timeoutMs = 10000) {
   return new Promise((resolve) => {
     const body = JSON.stringify({
-      model: MODEL,
-      prompt: `${SYSTEM_PROMPT}\n\nSituation: ${prompt}\n\nTHE ANNOUNCER says:`,
+      model,
+      system: SYSTEM_PROMPT,
+      prompt: `EVENT: ${prompt}
+Do not repeat: ${recentLines.slice(-2).join(' / ') || 'nothing yet'}.
+Broadcast only; no label or quotation marks.`,
       stream: false,
-      options: { temperature: 0.9, num_predict: 80 },
+      think: false,
+      keep_alive: '24h',
+      options: { temperature: 0.95, repeat_penalty: 1.18, num_predict: 48 },
     });
 
     const req = http.request({
@@ -30,16 +47,85 @@ async function generateNarration(prompt) {
       res.on('end', () => {
         try {
           const parsed = JSON.parse(data);
-          resolve(parsed.response ? parsed.response.trim() : null);
-        } catch { resolve(null); }
+          if (res.statusCode >= 400) {
+            return resolve({ text: null, error: parsed.error || `Ollama HTTP ${res.statusCode}` });
+          }
+          resolve({ text: parsed.response ? parsed.response.trim() : null, error: null });
+        } catch {
+          resolve({ text: null, error: 'Invalid Ollama response' });
+        }
       });
     });
 
-    req.on('error', () => resolve(null));
-    req.setTimeout(5000, () => { req.destroy(); resolve(null); });
+    req.on('error', error => resolve({ text: null, error: error.message }));
+    req.setTimeout(timeoutMs, () => {
+      req.destroy();
+      resolve({ text: null, error: 'Ollama request timed out' });
+    });
     req.write(body);
     req.end();
   });
+}
+
+function tidyNarration(text) {
+  return String(text || '')
+    .replace(/^(?:THE\s+)?ANNOUNCER\s*:\s*/i, '')
+    .replace(/^["']|["']$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 360);
+}
+
+async function generateNarration(prompt) {
+  if (!narratorStatus.enabled) return null;
+  if (narratorStatus.warming) return null;
+  narratorStatus.generating = true;
+  const models = [...new Set([MODEL, FALLBACK_MODEL].filter(Boolean))];
+  for (const model of models) {
+    const result = await requestNarration(model, prompt);
+    const line = tidyNarration(result.text);
+    if (line) {
+      narratorStatus.activeModel = model;
+      narratorStatus.available = true;
+      narratorStatus.generated += 1;
+      narratorStatus.lastError = null;
+      recentLines.push(line);
+      if (recentLines.length > 12) recentLines.shift();
+      narratorStatus.generating = false;
+      return line;
+    }
+    narratorStatus.lastError = result.error;
+    // Loading a second model after a timeout can evict the primary model and
+    // make every encounter slower. Only try the alternate if the model is absent.
+    if (!/not found/i.test(String(result.error || ''))) break;
+  }
+  narratorStatus.generating = false;
+  narratorStatus.available = false;
+  return null;
+}
+
+async function warmNarrator() {
+  if (!narratorStatus.enabled || narratorStatus.warming) return;
+  if (narratorStatus.generating) {
+    const retryTimer = setTimeout(warmNarrator, 1000);
+    retryTimer.unref();
+    return;
+  }
+  narratorStatus.warming = true;
+  const result = await requestNarration(
+    MODEL,
+    'Reply with exactly: ANNOUNCER ONLINE.',
+    35000
+  );
+  narratorStatus.warming = false;
+  if (result.text) {
+    narratorStatus.activeModel = MODEL;
+    narratorStatus.available = true;
+    narratorStatus.lastError = null;
+  } else {
+    narratorStatus.available = false;
+    narratorStatus.lastError = result.error;
+  }
 }
 
 function pick(options) {
@@ -100,9 +186,18 @@ async function narrate(event, context = {}) {
 
   const fallback = FALLBACKS[event];
   if (fallback) {
+    narratorStatus.fallbacks += 1;
     return fallback(context);
   }
+  narratorStatus.fallbacks += 1;
   return 'ANNOUNCER: Something happened. The audience is watching.';
 }
 
-module.exports = { narrate };
+function getNarratorStatus() {
+  return { ...narratorStatus };
+}
+
+const warmupTimer = setTimeout(warmNarrator, 250);
+warmupTimer.unref();
+
+module.exports = { narrate, getNarratorStatus };

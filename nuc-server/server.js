@@ -3,7 +3,7 @@ const path = require('path');
 const EventEmitter = require('events');
 const db = require('./db');
 const { classifyMonster, rollLoot, addXP, checkAchievements, logEvent, getCrawlerState } = require('./game-engine');
-const { narrate } = require('./narrator');
+const { narrate, getNarratorStatus } = require('./narrator');
 const battleEngine = require('./battle-engine');
 const { scoreTargets, getModelStats } = require('./ai-targeting');
 const progression = require('./progression-engine');
@@ -152,7 +152,14 @@ app.get('/api/state', (req, res) => {
   const scoreMap = Object.fromEntries(scored.map(s => [s.bssid, s.ai_score]));
   const monstersWithAI = monsters.map(m => ({ ...m, ai_score: scoreMap[m.bssid] ?? null }));
 
-  res.json({ crawler, monsters: monstersWithAI, loot, achievements, events, ...progress, ...worldState });
+  res.json({
+    crawler, monsters: monstersWithAI, loot, achievements, events,
+    narrator: getNarratorStatus(), ...progress, ...worldState,
+  });
+});
+
+app.get('/api/narrator/status', (req, res) => {
+  res.json(getNarratorStatus());
 });
 
 app.get('/api/chronicle', (req, res) => {
