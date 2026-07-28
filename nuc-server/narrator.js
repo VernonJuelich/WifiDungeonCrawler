@@ -2,8 +2,8 @@ const http = require('http');
 
 const OLLAMA_HOST = process.env.OLLAMA_HOST || '127.0.0.1';
 const OLLAMA_PORT = Number(process.env.OLLAMA_PORT || 11434);
-const MODEL = process.env.OLLAMA_MODEL || 'llama3.1:8b';
-const FALLBACK_MODEL = process.env.OLLAMA_FALLBACK_MODEL || 'qwen3:4b';
+const MODEL = process.env.OLLAMA_MODEL || 'qwen3:4b';
+const FALLBACK_MODEL = process.env.OLLAMA_FALLBACK_MODEL || '';
 const recentLines = [];
 const narratorStatus = {
   enabled: process.env.NARRATION_ENABLED !== '0',
