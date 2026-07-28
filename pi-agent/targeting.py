@@ -6,7 +6,7 @@ Local scoring is the same rule-based system as before, used when NUC unreachable
 import time
 import re
 import logging
-from config import MAX_TARGETING_CANDIDATES, DEFAULT_SSID_PATTERNS, HOME_SAFE_SSID
+from config import MAX_TARGETING_CANDIDATES, DEFAULT_SSID_PATTERNS, HOME_SAFE_SSID, TRUSTED_SSIDS
 
 log = logging.getLogger(__name__)
 
@@ -98,10 +98,11 @@ def _rank_via_nuc(networks: list[dict]) -> list[dict] | None:
 
 def rank(networks: list[dict]) -> list[dict]:
     """Return top candidates sorted by priority. Tries NUC AI, falls back locally."""
+    excluded_ssids = {HOME_SAFE_SSID.lower(), *(ssid.lower() for ssid in TRUSTED_SSIDS)}
     candidates = [
         n for n in networks
         if n.get("bssid")
-        and str(n.get("ssid", "")).strip().lower() != HOME_SAFE_SSID.lower()
+        and str(n.get("ssid", "")).strip().lower() not in excluded_ssids
     ]
 
     # Try NUC-based AI scoring first

@@ -70,6 +70,9 @@ app.post('/api/network', async (req, res) => {
   const { bssid, encryption, signal, channel, vendor, clients } = req.body;
   const ssid = cleanSsid(req.body.ssid);
   if (!bssid) return res.status(400).json({ error: 'bssid required' });
+  if (expansion.isTrustedDevice(ssid)) {
+    return res.json({ status: 'trusted_device', ssid, message: `${ssid} is excluded from encounters.` });
+  }
 
   const { type: monsterType, cr, xp: xpValue } = classifyMonster({ encryption, signal, ssid });
 
@@ -156,7 +159,9 @@ app.get('/api/state', (req, res) => {
   const expansionState = expansion.state();
 
   // Attach AI scores to each monster for dashboard display
-  const visibleMonsters = monsters.filter(monster => !expansion.isHomeNetwork(monster.ssid));
+  const visibleMonsters = monsters.filter(monster =>
+    !expansion.isHomeNetwork(monster.ssid) && !expansion.isTrustedDevice(monster.ssid)
+  );
   const scored   = scoreTargets(visibleMonsters);
   const scoreMap = Object.fromEntries(scored.map(s => [s.bssid, s.ai_score]));
   const monstersWithAI = visibleMonsters.map(m => ({ ...m, ai_score: scoreMap[m.bssid] ?? null }));
@@ -194,7 +199,9 @@ app.post('/api/targeting', (req, res) => {
   );
   res.json({
     targets: scoreTargets(candidates).filter(candidate =>
-      !defeated.has(candidate.bssid) && !expansion.isHomeNetwork(candidate.ssid)
+      !defeated.has(candidate.bssid)
+      && !expansion.isHomeNetwork(candidate.ssid)
+      && !expansion.isTrustedDevice(candidate.ssid)
     ),
     model: 'signal-encounter-v1',
   });

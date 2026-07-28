@@ -86,6 +86,16 @@ function isHomeNetwork(ssid) {
   return Boolean(ssid) && String(ssid).trim().toLowerCase() === homeSsid().trim().toLowerCase();
 }
 
+function trustedSsids() {
+  const configured = process.env.DUNGEON_TRUSTED_SSIDS
+    || setting('trusted_ssids', "VJ's iPhone,VJ’s iPhone");
+  return configured.split(',').map(value => value.trim().toLowerCase()).filter(Boolean);
+}
+
+function isTrustedDevice(ssid) {
+  return Boolean(ssid) && trustedSsids().includes(String(ssid).trim().toLowerCase());
+}
+
 function addAudience(event, context = {}) {
   const c = db.prepare('SELECT floor FROM crawler WHERE id=1').get();
   const rule = currentFloorRule(c.floor);
@@ -330,7 +340,7 @@ function state() {
 }
 
 module.exports = {
-  currentFloorRule, isHomeNetwork, enterSafeRoom, addAudience, trainSkill,
+  currentFloorRule, isHomeNetwork, isTrustedDevice, enterSafeRoom, addAudience, trainSkill,
   skillBonuses, bossTierFor, awardBox, openSealedBoxes, evaluateSponsors,
   onNetwork, onBattle, onDefeat, onVictory, state,
 };
