@@ -11,6 +11,18 @@ const QUEST_NOUNS = [
   'WiFi Menace', 'Invisible Landlord', 'Roaming Goblin Union',
   'Dungeon Dead Zone', 'Overconfident Wyvern', 'Signal-Stealing Horror',
 ];
+const TOWN_DISTRICTS = [
+  'The Crooked Anvil', 'Goblin Market', 'Guild Hall of Excessive Forms',
+  "Donut's Royal Promenade", 'The Questionable Apothecary', 'Buffering Square',
+];
+const DONUT_ERRANDS = [
+  'judged three shopkeepers and purchased nothing',
+  'won a staring contest against a taxidermied basilisk',
+  'demanded a royal discount and somehow received an apology',
+  'reviewed the fish selection with open contempt',
+  'started a rumour that Carl cannot read price tags',
+  'was carried between shops because the pavement looked provincial',
+];
 
 function record(type, message, data = {}) {
   db.prepare('INSERT INTO events (type,message,data) VALUES (?,?,?)')
@@ -82,23 +94,79 @@ function visitTownIfNeeded(force = false) {
       COUNT(*) count FROM loot WHERE sold=0 AND equipped=0
   `).get();
   db.prepare('UPDATE loot SET sold=1 WHERE sold=0 AND equipped=0').run();
-  const crawler = db.prepare('SELECT * FROM crawler WHERE id=1').get();
-  const upgradeCost = 25 + crawler.level * 10;
-  const upgrade = sale.gold >= upgradeCost;
-  const weapon = upgrade && crawler.town_trips % 2 === 0 ? 1 : 0;
-  const armor = upgrade && !weapon ? 1 : 0;
+  let crawler = db.prepare('SELECT * FROM crawler WHERE id=1').get();
+  const trip = Number(crawler.town_trips || 0) + 1;
+  const seed = trip + Number(crawler.kills || 0) * 3 + Number(crawler.floor || 1) * 7;
+  const district = TOWN_DISTRICTS[seed % TOWN_DISTRICTS.length];
+  const donutErrand = DONUT_ERRANDS[(seed * 5) % DONUT_ERRANDS.length];
+  const merchant = expansion.state().travellingMerchant || {};
+  let incident;
+  let incidentGold = 0;
+  let incidentXp = 0;
+  switch (seed % 6) {
+    case 0: {
+      const lost = Math.min(12 + crawler.level, Math.max(0, crawler.gold + sale.gold));
+      incidentGold = -lost;
+      incident = `A licensed pickpocket collected ${lost} gold as a convenience fee.`;
+      break;
+    }
+    case 1:
+      incidentGold = 8 + crawler.floor * 2;
+      incident = `Carl was mistaken for hired entertainment and earned ${incidentGold} gold.`;
+      break;
+    case 2:
+      incidentXp = 12 + crawler.level * 3;
+      incident = `A retired crawler taught Carl one useful stance: +${incidentXp} XP.`;
+      break;
+    case 3:
+      incidentGold = 15;
+      incident = 'Donut won a municipal argument. The settlement was 15 gold and one written apology.';
+      break;
+    case 4:
+      db.prepare('UPDATE crawler SET max_stamina=max_stamina+2 WHERE id=1').run();
+      incident = 'A suspicious tonic permanently added 2 stamina. Its ingredients remain legally confidential.';
+      break;
+    default:
+      incident = 'The Guild inspected Carl, stamped the wrong form, and declared the visit mostly lawful.';
+  }
+  if (incidentXp) addXP(incidentXp);
+
+  const discount = merchant.active ? 0.75 : 1;
+  const availableGold = Math.max(0, crawler.gold + sale.gold + incidentGold);
+  const options = [
+    { name: 'weapon tempering', cost: Math.ceil((35 + crawler.level * 8) * discount), field: 'weapon_power', amount: 1 },
+    { name: 'armor reinforcement', cost: Math.ceil((35 + crawler.level * 8) * discount), field: 'armor_power', amount: 1 },
+    { name: 'an aggressively pocketed satchel', cost: Math.ceil((55 + crawler.level * 6) * discount), field: 'inventory_capacity', amount: 2 },
+    { name: 'questionable vitality treatment', cost: Math.ceil((50 + crawler.level * 7) * discount), field: 'max_health', amount: 5 },
+  ];
+  const wanted = options[(trip - 1) % options.length];
+  const bought = availableGold >= wanted.cost;
+  if (bought) {
+    db.prepare(`UPDATE crawler SET ${wanted.field}=${wanted.field}+? WHERE id=1`).run(wanted.amount);
+  }
+  const purchase = bought
+    ? `${wanted.name} for ${wanted.cost} gold${merchant.active ? ` from ${merchant.kind}` : ''}`
+    : `nothing; ${wanted.name} cost ${wanted.cost} gold and poverty remained undefeated`;
+  const spent = bought ? wanted.cost : 0;
+
   db.prepare(`
-    UPDATE crawler SET gold=gold+?-?,town_trips=town_trips+1,
-      weapon_power=weapon_power+?,armor_power=armor_power+?,
-      health=max_health,stamina=max_stamina,mood='refreshed',
+    UPDATE crawler SET gold=max(0,gold+?+?-?),town_trips=town_trips+1,
+      health=max_health,stamina=max_stamina,mood=?,
       last_town_visit=datetime('now') WHERE id=1
-  `).run(sale.gold, upgrade ? upgradeCost : 0, weapon, armor);
-  const purchase = upgrade ? (weapon ? 'weapon polishing' : 'armor tailoring') : 'absolutely nothing useful';
-  const message = `Town trip: sold ${sale.count} items for ${sale.gold} gold and purchased ${purchase}.`;
+  `).run(sale.gold, incidentGold, spent, bought ? 'retail therapy' : 'window shopping');
   const opened = expansion.openSealedBoxes('town guild hall');
   expansion.evaluateSponsors();
-  record('town', message, { sold: sale.count, gold: sale.gold, purchase, boxesOpened: opened.length });
-  return { message, sold: sale.count, gold: sale.gold, purchase, opened };
+  crawler = db.prepare('SELECT * FROM crawler WHERE id=1').get();
+  const message = `Town trip #${trip}: ${district}. Sold ${sale.count} items for ${sale.gold} gold. `
+    + `${incident} Purchased ${purchase}. Donut ${donutErrand}. `
+    + `${opened.length} sealed box${opened.length === 1 ? '' : 'es'} opened; treasury now ${crawler.gold} gold.`;
+  const receipt = {
+    trip, district, sold: sale.count, saleGold: sale.gold, incident,
+    incidentGold, incidentXp, purchase, spent, donutErrand,
+    boxesOpened: opened.length, finalGold: crawler.gold,
+  };
+  record('town', message, receipt);
+  return { message, ...receipt, opened };
 }
 
 function visitTownIfDue() {
