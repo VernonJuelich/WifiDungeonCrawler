@@ -20,6 +20,12 @@ const EVENT_ICONS = {
   loot:            '🎁',
   achievement:     '🏆',
   level_up:        '⬆',
+  quest_start:     '📜',
+  quest_progress:  '▰',
+  quest_complete:  '✓',
+  act_up:           '★',
+  town:             '🏪',
+  offline:          '⌛',
   'system-boot':   '⚡',
 };
 
@@ -37,6 +43,7 @@ function renderAll() {
   renderEvents(state.events);
   renderLoot(state.loot);
   renderAchievements(state.achievements);
+  renderProgression(state);
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -210,6 +217,63 @@ function renderAchievements(achievements) {
   `).join('');
 }
 
+function renderProgression(s) {
+  const c = s.crawler || {};
+  const q = s.quest || {};
+  const inv = s.inventory || { count: 0, capacity: c.inventory_capacity || 10 };
+  document.getElementById('act-label').textContent = `ACT ${c.act || 1}`;
+  const qpct = Math.min(100, ((q.progress || 0) / Math.max(1, q.required || 1)) * 100);
+  document.getElementById('quest-card').innerHTML = `
+    <div class="quest-title">${escHtml(q.title || 'Awaiting bureaucratic destiny')}</div>
+    <div class="quest-desc">${escHtml(q.description || '')}</div>
+    <div class="progress-track"><div class="progress-fill quest-fill" style="width:${qpct}%"></div>
+      <span>${q.progress || 0} / ${q.required || 0}</span></div>
+    <div class="quest-reward">REWARD ${q.reward_xp || 0} XP · ${q.reward_gold || 0} GOLD</div>`;
+  document.getElementById('inventory-count').textContent = `${inv.count}/${inv.capacity}`;
+  document.getElementById('character-sheet').innerHTML = `
+    <div class="sheet-grid">
+      <span>STR</span><b>${c.strength || 5}</b><span>DEX</span><b>${c.dexterity || 5}</b>
+      <span>VIT</span><b>${c.vitality || 5}</b><span>INT</span><b>${c.intelligence || 5}</b>
+      <span>WEAPON</span><b>+${c.weapon_power || 0}</b><span>ARMOR</span><b>+${c.armor_power || 0}</b>
+      <span>GOLD</span><b>${c.gold || 0}</b><span>TOWN TRIPS</span><b>${c.town_trips || 0}</b>
+      <span>QUESTS</span><b>${c.quests_completed || 0}</b><span>OFFLINE</span><b>${Math.floor((c.offline_seconds || 0)/60)}m</b>
+    </div>`;
+  renderHistory(s.history || []);
+}
+
+function renderHistory(history) {
+  const canvas = document.getElementById('history-chart');
+  const ctx = canvas.getContext('2d');
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = Math.max(260, Math.floor(rect.width * devicePixelRatio));
+  canvas.height = 130 * devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  const w = canvas.width / devicePixelRatio, h = 130;
+  ctx.clearRect(0, 0, w, h);
+  ctx.strokeStyle = '#2a1f4a'; ctx.strokeRect(8, 8, w - 16, h - 24);
+  if (history.length < 2) {
+    ctx.fillStyle = '#6a5a8a'; ctx.font = '11px monospace';
+    ctx.fillText('History begins after the next victory.', 16, 68); return;
+  }
+  const series = [
+    ['level', '#00ff88'], ['kills', '#ffd700'], ['gold', '#ff2f7b'],
+  ];
+  for (const [key, color] of series) {
+    const max = Math.max(1, ...history.map(x => Number(x[key] || 0)));
+    ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 2;
+    history.forEach((x, i) => {
+      const px = 9 + i * (w - 18) / (history.length - 1);
+      const py = h - 17 - Number(x[key] || 0) / max * (h - 28);
+      i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+    });
+    ctx.stroke();
+  }
+  ctx.font = '9px monospace';
+  ctx.fillStyle = '#00ff88'; ctx.fillText('LEVEL', 10, 127);
+  ctx.fillStyle = '#ffd700'; ctx.fillText('KILLS', 60, 127);
+  ctx.fillStyle = '#ff2f7b'; ctx.fillText('GOLD', 105, 127);
+}
+
 // ── Popups ────────────────────────────────────────────────────────────────────
 function showAnnouncement(msg) {
   const bar = document.getElementById('announcement-bar');
@@ -312,6 +376,15 @@ function connectSSE() {
         document.getElementById('crawler-level').textContent = data.level;
         if (data.message) showAnnouncement(data.message);
         addEventEntry(data);
+        break;
+
+      case 'quest_progress':
+      case 'quest_complete':
+      case 'act_up':
+      case 'town':
+      case 'offline':
+        if (data.message) { showAnnouncement(data.message); addEventEntry(data); }
+        fetchState();
         break;
 
     }

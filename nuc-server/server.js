@@ -6,6 +6,7 @@ const { classifyMonster, rollLoot, addXP, checkAchievements, logEvent, getCrawle
 const { narrate } = require('./narrator');
 const battleEngine = require('./battle-engine');
 const { scoreTargets, getModelStats } = require('./ai-targeting');
+const progression = require('./progression-engine');
 
 const app = express();
 const PORT = Number(process.env.PORT || 9310);
@@ -14,6 +15,11 @@ const PORT = Number(process.env.PORT || 9310);
 const bus = new EventEmitter();
 bus.setMaxListeners(50);
 battleEngine.setEmitter(bus);
+const offlineProgress = progression.applyOfflineProgress();
+progression.ensureQuest();
+setInterval(() => {
+  db.prepare("UPDATE crawler SET last_active=datetime('now') WHERE id=1").run();
+}, 60000).unref();
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -105,13 +111,18 @@ app.get('/api/state', (req, res) => {
   const loot         = db.prepare('SELECT * FROM loot ORDER BY acquired_at DESC LIMIT 20').all();
   const achievements = db.prepare('SELECT * FROM achievements ORDER BY unlocked_at DESC').all();
   const events       = db.prepare('SELECT * FROM events ORDER BY created_at DESC LIMIT 30').all();
+  const progress     = progression.progressionState();
 
   // Attach AI scores to each monster for dashboard display
   const scored   = scoreTargets(monsters);
   const scoreMap = Object.fromEntries(scored.map(s => [s.bssid, s.ai_score]));
   const monstersWithAI = monsters.map(m => ({ ...m, ai_score: scoreMap[m.bssid] ?? null }));
 
-  res.json({ crawler, monsters: monstersWithAI, loot, achievements, events });
+  res.json({ crawler, monsters: monstersWithAI, loot, achievements, events, ...progress });
+});
+
+app.get('/api/chronicle', (req, res) => {
+  res.json(db.prepare('SELECT * FROM events ORDER BY id DESC LIMIT 500').all());
 });
 
 app.post('/api/crawler/name', (req, res) => {

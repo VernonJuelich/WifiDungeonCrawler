@@ -11,6 +11,9 @@ const MONSTER_TABLE = [
 ];
 
 const DEFAULT_SSID_PATTERNS = /^(NETGEAR|Linksys|TP-Link|ASUS|Dlink|D-Link|Xfinity|Spectrum|ATT|Verizon|OPTUS|Telstra|TPG|iiNet|Belong)/i;
+const ITEM_ADJECTIVES_A = ['Suspiciously', 'Needlessly', 'Heroically', 'Moist', 'Vorpal', 'Discount', 'Glittering', 'Cursed'];
+const ITEM_ADJECTIVES_B = ['Moist', 'Aggressive', 'Tax-Deductible', 'Pointy', 'Sentient', 'Unlicensed', 'Apocalyptic', 'Velvet'];
+const ITEM_NOUNS = ['Crocs', 'Codpiece', 'Antenna', 'Bathrobe', 'Spork', 'Helmet', 'Socks', 'War Router'];
 
 const LOOT_TABLE = {
   common: [
@@ -105,6 +108,11 @@ function rollLoot(monsterType, ssid) {
 
   const pool = LOOT_TABLE[rarity];
   let item = pool[Math.floor(Math.random() * pool.length)];
+  const a = ITEM_ADJECTIVES_A[Math.floor(Math.random() * ITEM_ADJECTIVES_A.length)];
+  let b = ITEM_ADJECTIVES_B[Math.floor(Math.random() * ITEM_ADJECTIVES_B.length)];
+  if (a === b) b = 'Questionable';
+  const noun = ITEM_NOUNS[Math.floor(Math.random() * ITEM_NOUNS.length)];
+  item = { ...item, name: `${a} ${b} ${noun}` };
 
   // Named item based on SSID for rare+
   if ((rarity === 'rare' || rarity === 'legendary') && ssid) {
@@ -122,16 +130,30 @@ function addXP(amount) {
 
   xp += amount;
   let leveled = false;
+  let levelsGained = 0;
 
   while (xp >= xp_next) {
     xp -= xp_next;
     level += 1;
     xp_next = Math.floor(xp_next * 1.5);
     leveled = true;
+    levelsGained += 1;
   }
 
-  db.prepare('UPDATE crawler SET xp=?, xp_next=?, level=? WHERE id=1').run(xp, xp_next, level);
-  return { level, leveled, xp, xp_next };
+  db.prepare(`
+    UPDATE crawler SET xp=?,xp_next=?,level=?,
+      strength=strength+?,dexterity=dexterity+?,vitality=vitality+?,
+      intelligence=intelligence+?,max_health=max_health+?,max_stamina=max_stamina+?,
+      health=MIN(max_health+?,health+?),stamina=MIN(max_stamina+?,stamina+?)
+    WHERE id=1
+  `).run(
+    xp, xp_next, level,
+    levelsGained, levelsGained, levelsGained, levelsGained,
+    levelsGained * 5, levelsGained * 3,
+    levelsGained * 5, levelsGained * 5,
+    levelsGained * 3, levelsGained * 3
+  );
+  return { level, leveled, levelsGained, xp, xp_next };
 }
 
 function checkAchievements(triggerCode) {

@@ -61,6 +61,10 @@
   <main>
     <!-- LEFT: Trophy Case -->
     <div class="col col-left">
+      <section class="panel" id="character-panel">
+        <div class="panel-header">CHARACTER SHEET</div>
+        <div id="character-sheet"></div>
+      </section>
       <section class="panel fill-panel" id="achievements-panel">
         <div class="panel-header">TROPHY CASE</div>
         <div id="achievement-list">
@@ -71,6 +75,10 @@
 
     <!-- CENTER: Dungeon Map + Battle Queue -->
     <div class="col col-center">
+      <section class="panel" id="quest-panel">
+        <div class="panel-header">CURRENT QUEST · <span id="act-label">ACT I</span></div>
+        <div id="quest-card"></div>
+      </section>
       <section class="panel" id="dungeon-map">
         <div class="panel-header">DUNGEON MAP <span class="blink">▮</span></div>
         <div class="monster-grid" id="monster-grid">
@@ -100,8 +108,12 @@
       </section>
 
       <section class="panel" id="loot-panel">
-        <div class="panel-header">INVENTORY</div>
+        <div class="panel-header">INVENTORY <span id="inventory-count"></span></div>
         <div id="loot-list"><div class="empty-state">No loot yet. Get to work, crawler.</div></div>
+      </section>
+      <section class="panel" id="history-panel">
+        <div class="panel-header">PROGRESSION HISTORY</div>
+        <canvas id="history-chart" height="130"></canvas>
       </section>
     </div>
   </main>

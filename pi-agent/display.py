@@ -204,9 +204,16 @@ def _render(state):
     draw.text((3, 62), _fit(line2, body, W - hp_width - 16, True), font=body, fill=0)
     if hp_text:
         draw.text((W - hp_width - 4, 62), hp_text, font=body, fill=0)
+    target_max_hp = int((target or {}).get("max_hp") or 0)
+    encounter_pct = 0 if not target or target_max_hp <= 0 else (
+        1 - int(target.get("hp") or 0) / target_max_hp
+    )
+    draw.text((3, 69), "E", font=tiny, fill=0)
+    draw.rectangle((10, 70, W - 4, 73), outline=0)
+    draw.rectangle((11, 71, 11 + int((W - 16) * max(0, min(1, encounter_pct))), 72), fill=0)
 
     portrait = _character_frame(target, events, bool(monsters))
-    _paste_center(image, portrait, 74)
+    _paste_center(image, portrait, 76)
 
     name = crawler.get("name") or "Carl"
     xp = int(crawler.get("xp") or 0)
@@ -226,6 +233,11 @@ def _render(state):
     draw.text((62, 180), "ST", font=tiny, fill=0)
     draw.rectangle((78, 181, W - 4, 186), outline=0)
     draw.rectangle((79, 182, 79 + int((W - 84) * stamina / max_stamina), 185), fill=0)
+    quest = state.get("quest") or {}
+    quest_pct = int(quest.get("progress") or 0) / max(1, int(quest.get("required") or 1))
+    draw.text((3, 189), "Q", font=tiny, fill=0)
+    draw.rectangle((10, 190, W - 4, 193), outline=0)
+    draw.rectangle((11, 191, 11 + int((W - 16) * max(0, min(1, quest_pct))), 192), fill=0)
     message = ""
     for event in events:
         if event.get("message"):
@@ -238,7 +250,7 @@ def _render(state):
         if message.upper().startswith(prefix):
             message = message[len(prefix):].strip()
             break
-    y = 190
+    y = 197
     for line in _wrap(message, tiny, W - 14, 5):
         draw.text((4, y), line, font=tiny, fill=0)
         y += 10

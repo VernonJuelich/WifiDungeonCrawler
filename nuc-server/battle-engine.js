@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const db = require('./db');
 const { rollLoot, addXP, checkAchievements, logEvent } = require('./game-engine');
 const { narrate } = require('./narrator');
+const progression = require('./progression-engine');
 
 let eventEmitter = null;
 const FLOOR_KILLS = 5;
@@ -224,6 +225,21 @@ async function handleVictory(monster, battle) {
     broadcast('event', { type: 'level_up', message: levelMessage, level });
   }
 
+  const questResult = progression.advanceQuest(1);
+  if (questResult.completed) {
+    const questMessage = `Quest complete: ${questResult.completedQuest.title}. The reward committee reluctantly approves.`;
+    broadcast('event', {
+      type: 'quest_complete', message: questMessage,
+      quest: questResult.quest, completedQuest: questResult.completedQuest, act: questResult.act,
+    });
+  } else {
+    broadcast('event', { type: 'quest_progress', quest: questResult.quest });
+  }
+
+  const town = progression.visitTownIfNeeded();
+  if (town) broadcast('event', { type: 'town', ...town });
+  progression.snapshot();
+
   for (const code of [
     crawler.kills === 1 ? 'first_blood' : null,
     crawler.kills >= 100 ? 'century' : null,
@@ -240,7 +256,7 @@ async function handleVictory(monster, battle) {
     broadcast('event', { type: 'achievement', message: achievementMessage, achievement });
   }
 
-  return { xp: xpGain, item, floor: newFloor };
+  return { xp: xpGain, item, floor: newFloor, quest: questResult.quest, town };
 }
 
 module.exports = { setEmitter, advanceEncounter };

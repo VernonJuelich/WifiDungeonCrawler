@@ -71,6 +71,31 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now'))
   );
 
+  CREATE TABLE IF NOT EXISTS quests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    act INTEGER DEFAULT 1,
+    title TEXT,
+    description TEXT,
+    progress INTEGER DEFAULT 0,
+    required INTEGER DEFAULT 5,
+    reward_xp INTEGER DEFAULT 100,
+    reward_gold INTEGER DEFAULT 25,
+    status TEXT DEFAULT 'active',
+    created_at TEXT DEFAULT (datetime('now')),
+    completed_at TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS stat_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    level INTEGER,
+    xp INTEGER,
+    kills INTEGER,
+    floor INTEGER,
+    gold INTEGER,
+    health INTEGER,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
   INSERT OR IGNORE INTO crawler (id, name) VALUES (1, 'Carl');
 `);
 
@@ -110,9 +135,28 @@ for (const [name, definition] of [
   ['weapon_power', 'INTEGER DEFAULT 0'],
   ['armor_power', 'INTEGER DEFAULT 0'],
   ['last_recovery', 'TEXT'],
+  ['strength', 'INTEGER DEFAULT 5'],
+  ['dexterity', 'INTEGER DEFAULT 5'],
+  ['vitality', 'INTEGER DEFAULT 5'],
+  ['intelligence', 'INTEGER DEFAULT 5'],
+  ['gold', 'INTEGER DEFAULT 0'],
+  ['inventory_capacity', 'INTEGER DEFAULT 10'],
+  ['act', 'INTEGER DEFAULT 1'],
+  ['quests_completed', 'INTEGER DEFAULT 0'],
+  ['town_trips', 'INTEGER DEFAULT 0'],
+  ['last_active', 'TEXT'],
+  ['offline_seconds', 'INTEGER DEFAULT 0'],
 ]) {
   if (!crawlerColumns.has(name)) db.exec(`ALTER TABLE crawler ADD COLUMN ${name} ${definition}`);
 }
+
+// Existing saves already have levels; grant the base stats those levels earned.
+db.exec(`
+  UPDATE crawler SET
+    strength=4+level, dexterity=4+level, vitality=4+level, intelligence=4+level,
+    max_health=max_health+(level-1)*5, max_stamina=max_stamina+(level-1)*3
+  WHERE level>1 AND strength=5 AND dexterity=5 AND vitality=5 AND intelligence=5
+`);
 
 const lootColumns = new Set(
   db.prepare("PRAGMA table_info(loot)").all().map(column => column.name)
@@ -121,6 +165,8 @@ for (const [name, definition] of [
   ['power', 'INTEGER DEFAULT 0'],
   ['defense', 'INTEGER DEFAULT 0'],
   ['equipped', 'INTEGER DEFAULT 0'],
+  ['sold', 'INTEGER DEFAULT 0'],
+  ['gold_value', 'INTEGER DEFAULT 0'],
 ]) {
   if (!lootColumns.has(name)) db.exec(`ALTER TABLE loot ADD COLUMN ${name} ${definition}`);
 }
