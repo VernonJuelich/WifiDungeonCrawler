@@ -4,7 +4,7 @@ const OLLAMA_HOST = '127.0.0.1';
 const OLLAMA_PORT = 11434;
 const MODEL = process.env.OLLAMA_MODEL || 'qwen2.5:7b';
 
-const SYSTEM_PROMPT = `You are THE SYSTEM — an original AI announcer running a lethal-looking but harmless WiFi dungeon reality show.
+const SYSTEM_PROMPT = `You are THE ANNOUNCER — an original AI personality running a lethal-looking but harmless WiFi dungeon reality show.
 You are smug, theatrical, sarcastic, judgmental, fourth-wall aware, and delighted by the crawler's bad decisions.
 Compliments must sound backhanded. Treat minor failures like premium entertainment and victories like barely acceptable competence.
 Keep responses SHORT — 1-2 sentences max. Use ALL CAPS sparingly for comic emphasis.
@@ -15,7 +15,7 @@ async function generateNarration(prompt) {
   return new Promise((resolve) => {
     const body = JSON.stringify({
       model: MODEL,
-      prompt: `${SYSTEM_PROMPT}\n\nSituation: ${prompt}\n\nTHE SYSTEM says:`,
+      prompt: `${SYSTEM_PROMPT}\n\nSituation: ${prompt}\n\nTHE ANNOUNCER says:`,
       stream: false,
       options: { temperature: 0.9, num_predict: 80 },
     });
@@ -43,12 +43,12 @@ async function generateNarration(prompt) {
 }
 
 const FALLBACKS = {
-  monster_spotted: context => `SYSTEM: A ${context.monsterType} appeared. Try not to embarrass yourself immediately.`,
-  encounter: context => `SYSTEM: You attacked a ${context.monsterType}. Confidence is adorable when unsupported by evidence.`,
-  victory: context => `SYSTEM: The ${context.monsterType} is dead. Even statistical accidents count, apparently.`,
-  loot: context => `SYSTEM: ${String(context.rarity).toUpperCase()} loot: "${context.itemName}." Finally, equipment worthy of someone else.`,
-  level_up: context => `SYSTEM: LEVEL ${context.level}. Numbers go up; competence remains under review.`,
-  achievement: context => `SYSTEM: ACHIEVEMENT UNLOCKED — "${context.achievementName}." Standards have clearly collapsed.`,
+  monster_spotted: context => `ANNOUNCER: A ${context.monsterType} appeared. Try not to embarrass yourself immediately.`,
+  encounter: context => `ANNOUNCER: You attacked a ${context.monsterType}. Confidence is adorable when unsupported by evidence.`,
+  victory: context => `ANNOUNCER: The ${context.monsterType} is dead. Even statistical accidents count, apparently.`,
+  loot: context => `ANNOUNCER: ${String(context.rarity).toUpperCase()} loot: "${context.itemName}." Finally, equipment worthy of someone else.`,
+  level_up: context => `ANNOUNCER: LEVEL ${context.level}. Numbers go up; competence remains under review.`,
+  achievement: context => `ANNOUNCER: ACHIEVEMENT UNLOCKED — "${context.achievementName}." Standards have clearly collapsed.`,
 };
 
 async function narrate(event, context = {}) {
@@ -68,7 +68,7 @@ async function narrate(event, context = {}) {
   if (fallback) {
     return fallback(context);
   }
-  return 'SYSTEM: Something happened. The audience is watching.';
+  return 'ANNOUNCER: Something happened. The audience is watching.';
 }
 
 module.exports = { narrate };

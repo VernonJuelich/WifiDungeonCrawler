@@ -167,7 +167,7 @@ def _render(state):
         boss = "BOSS " if target.get("is_boss") else ""
         line1 = f"{boss}{target.get('monster_type', 'Monster')}"
         line2 = ssid
-        hp_text = f"{hp}/{max_hp}"
+        hp_text = f"{hp} / {max_hp}"
     else:
         line1, line2 = "SCANNING THE DUNGEON", "No monster in range"
         hp_text = ""
@@ -206,7 +206,12 @@ def _render(state):
     if not message:
         message = QUIPS[_quip_index % len(QUIPS)]
         _quip_index += 1
-    y = 190
+    for prefix in ("THE SYSTEM:", "SYSTEM:", "ANNOUNCER:"):
+        if message.upper().startswith(prefix):
+            message = message[len(prefix):].strip()
+            break
+    draw.text((3, 190), "ANNOUNCER:", font=bold, fill=0)
+    y = 201
     for line in _wrap(message, tiny, W - 8, 3):
         draw.text((4, y), line, font=tiny, fill=0)
         y += 10

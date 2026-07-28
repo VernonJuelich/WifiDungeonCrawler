@@ -60,11 +60,11 @@ function moodFor({ victory = false, defeated = false, critical = false, stamina,
 }
 
 function battleQuip(event) {
-  if (event.bossCharge) return 'SYSTEM: A charged attack! Sixty seconds of standing still finally paid off.';
-  if (event.critical) return 'SYSTEM: A critical hit. Please remain calm; competence may be temporary.';
-  if (!event.hit) return 'SYSTEM: You missed. Fortunately, humiliation requires no accuracy roll.';
-  if (event.enemyHits) return `SYSTEM: You dealt ${event.damage}. It dealt ${event.enemyDamage}. Riveting arithmetic, crawler.`;
-  return `SYSTEM: ${event.damage} damage. The audience has seen stronger WiFi passwords.`;
+  if (event.bossCharge) return 'ANNOUNCER: A charged attack! Sixty seconds of standing still finally paid off.';
+  if (event.critical) return 'ANNOUNCER: A critical hit. Please remain calm; competence may be temporary.';
+  if (!event.hit) return 'ANNOUNCER: You missed. Fortunately, humiliation requires no accuracy roll.';
+  if (event.enemyHits) return `ANNOUNCER: You dealt ${event.damage}. It dealt ${event.enemyDamage}. Riveting arithmetic, crawler.`;
+  return `ANNOUNCER: ${event.damage} damage. The audience has seen stronger WiFi passwords.`;
 }
 
 async function advanceEncounter(bssid, signal, dwellSeconds = 0) {
@@ -148,7 +148,7 @@ async function advanceEncounter(bssid, signal, dwellSeconds = 0) {
   broadcast('event', event);
 
   if (defeated) {
-    const message = `SYSTEM: ${crawler.name} falls! Bjorn drags the crawler away to recover.`;
+    const message = `ANNOUNCER: ${crawler.name} falls! Bjorn drags the crawler away to recover.`;
     db.prepare("UPDATE monsters SET status='alive' WHERE bssid=?").run(bssid);
     logEvent('defeat', message, event);
     broadcast('event', { ...event, type: 'defeat', message });
@@ -182,7 +182,7 @@ async function handleVictory(monster, battle) {
   const newFloor = Math.floor(crawler.kills / FLOOR_KILLS) + 1;
   if (newFloor > crawler.floor) {
     db.prepare('UPDATE crawler SET floor=? WHERE id=1').run(newFloor);
-    const floorMessage = `SYSTEM: FLOOR ${newFloor} UNLOCKED. The dungeon gets meaner from here.`;
+    const floorMessage = `ANNOUNCER: FLOOR ${newFloor} UNLOCKED. The dungeon gets meaner from here.`;
     logEvent('floor_up', floorMessage, { floor: newFloor });
     broadcast('event', { type: 'floor_up', message: floorMessage, floor: newFloor });
   }
