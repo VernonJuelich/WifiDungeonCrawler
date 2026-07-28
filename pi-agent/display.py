@@ -395,9 +395,9 @@ def _render_page(state, page):
             count_text = f"{daily_progress}/{daily_required}"
             draw.text((4, y), _fit(label, tiny, W - tiny.getlength(count_text) - 17, True), font=tiny, fill=0)
             draw.text((W - tiny.getlength(count_text) - 9, y), count_text, font=tiny, fill=0)
-            draw.rectangle((4, y + 10, W - 5, y + 15), outline=0)
+            draw.rectangle((4, y + 12, W - 5, y + 17), outline=0)
             fill = int((W - 11) * min(1, daily_progress / daily_required))
-            draw.rectangle((5, y + 11, 5 + fill, y + 14), fill=0)
+            draw.rectangle((5, y + 13, 5 + fill, y + 16), fill=0)
             y += 27
 
         draw.line((3, 194, W - 4, 194), fill=0)
