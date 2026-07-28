@@ -1,5 +1,5 @@
 param(
-  [string]$Source = "$PSScriptRoot\..\Screenshots\PNG\carl-actions-clean.png",
+  [string]$Source = "$PSScriptRoot\..\Screenshots\PNG\e7593cb8-5867-4c09-887f-79ce3f76871c.png",
   [string]$Output = "$PSScriptRoot\..\pi-agent\assets\characters"
 )
 
@@ -8,9 +8,9 @@ Add-Type -AssemblyName System.Drawing
 
 $actions = @(
   @('idle', 'walk', 'run', 'attack', 'critical-hit'),
-  @('cast-spell', 'healing', 'take-damage', 'block', 'victory'),
-  @('resting', 'reading', 'looting', 'shopping', 'level-up'),
-  @('drink-coffee', 'talking', 'thinking', 'scared', 'dead')
+  @('cast-spell', 'block', 'healing', 'take-damage', 'victory'),
+  @('looting', 'level-up', 'resting', 'reading', 'drink-coffee'),
+  @('shopping', 'talking', 'thinking', 'scared', 'dead')
 )
 $sourceImage = [Drawing.Bitmap]::new((Resolve-Path $Source).Path)
 
@@ -27,9 +27,10 @@ try {
       $top = $row * $cellHeight
       $width = if ($column -eq 4) { $sourceImage.Width - $left } else { $cellWidth }
       $height = if ($row -eq 3) { $sourceImage.Height - $top } else { $cellHeight }
-      # Ignore a narrow overlap gutter where effects from adjacent poses can bleed.
-      $leftTrim = 10
-      $rightTrim = if ($action -eq 'scared') { 28 } else { 10 }
+      # Exclude the printed action label and narrow gutters between grid cells.
+      $height = [math]::Min($height, $cellHeight - 38)
+      $leftTrim = 8
+      $rightTrim = 8
       $left += $leftTrim
       $width -= ($leftTrim + $rightTrim)
 
@@ -73,9 +74,6 @@ try {
         $sourceRect = [Drawing.Rectangle]::new($left + $minX, $top + $minY, $cropWidth, $cropHeight)
         $destRect = [Drawing.Rectangle]::new($destX, $destY, $drawWidth, $drawHeight)
         $graphics.DrawImage($sourceImage, $destRect, $sourceRect, [Drawing.GraphicsUnit]::Pixel)
-        if ($action -eq 'scared') {
-          $graphics.FillRectangle([Drawing.Brushes]::White, 0, 0, 105, 8)
-        }
       } finally {
         $graphics.Dispose()
       }
