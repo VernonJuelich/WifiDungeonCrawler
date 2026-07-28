@@ -70,6 +70,10 @@ app.post('/api/network', async (req, res) => {
   const { bssid, encryption, signal, channel, vendor, clients } = req.body;
   const ssid = cleanSsid(req.body.ssid);
   if (!bssid) return res.status(400).json({ error: 'bssid required' });
+  if (expansion.isMobileMerchant({ ssid, vendor })) {
+    const merchant = expansion.visitTravellingMerchant({ bssid, ssid, vendor, signal });
+    return res.json({ status: 'travelling_merchant', merchant });
+  }
   if (expansion.isTrustedDevice(ssid)) {
     return res.json({ status: 'trusted_device', ssid, message: `${ssid} is excluded from encounters.` });
   }
@@ -160,7 +164,9 @@ app.get('/api/state', (req, res) => {
 
   // Attach AI scores to each monster for dashboard display
   const visibleMonsters = monsters.filter(monster =>
-    !expansion.isHomeNetwork(monster.ssid) && !expansion.isTrustedDevice(monster.ssid)
+    !expansion.isHomeNetwork(monster.ssid)
+    && !expansion.isTrustedDevice(monster.ssid)
+    && !expansion.isMobileMerchant(monster)
   );
   const scored   = scoreTargets(visibleMonsters);
   const scoreMap = Object.fromEntries(scored.map(s => [s.bssid, s.ai_score]));
@@ -202,6 +208,7 @@ app.post('/api/targeting', (req, res) => {
       !defeated.has(candidate.bssid)
       && !expansion.isHomeNetwork(candidate.ssid)
       && !expansion.isTrustedDevice(candidate.ssid)
+      && !expansion.isMobileMerchant(candidate)
     ),
     model: 'signal-encounter-v1',
   });

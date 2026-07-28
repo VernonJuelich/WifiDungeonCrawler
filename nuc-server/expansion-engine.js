@@ -96,6 +96,57 @@ function isTrustedDevice(ssid) {
   return Boolean(ssid) && trustedSsids().includes(String(ssid).trim().toLowerCase());
 }
 
+function mobileMerchantKind(network = {}) {
+  const ssid = String(typeof network === 'string' ? network : network.ssid || '').trim();
+  const vendor = String(typeof network === 'object' ? network.vendor || '' : '').trim();
+  const name = ssid.toLowerCase();
+  const maker = vendor.toLowerCase();
+  if (/\biphone\b|\bipad\b|\bios\b/.test(name)) return 'iPhone Merchant';
+  if (/\bandroid(?:ap)?\b|\bgalaxy\b|\bpixel\b|\boneplus\b|\boppo\b|\bredmi\b|\bxiaomi\b|\bhuawei\b|\bmotorola\b|\bmoto\s*[a-z0-9]+\b|\bphone\b|\bmobile hotspot\b/.test(name)) {
+    return 'Android Merchant';
+  }
+  if (/\bapple\b/.test(maker) && /\bhotspot\b|\biphone\b|\bipad\b/.test(name)) return 'iPhone Merchant';
+  if (/\bsamsung\b|\bgoogle\b|\boneplus\b|\boppo\b|\bxiaomi\b|\bhuawei\b|\bmotorola\b/.test(maker)
+      && /\bhotspot\b|\bandroid\b|\bgalaxy\b|\bpixel\b|\bphone\b/.test(name)) {
+    return 'Android Merchant';
+  }
+  return null;
+}
+
+function isMobileMerchant(network) {
+  return Boolean(mobileMerchantKind(network));
+}
+
+function visitTravellingMerchant(network) {
+  const now = Date.now();
+  let previous = {};
+  try {
+    previous = JSON.parse(setting('travelling_merchant', '{}') || '{}');
+  } catch {
+    previous = {};
+  }
+  const kind = mobileMerchantKind(network);
+  const merchant = {
+    active: true,
+    kind,
+    ssid: String(network.ssid || 'Mysterious Phone'),
+    bssid: String(network.bssid || ''),
+    signal: Number(network.signal || -100),
+    lastSeen: now,
+    offer: kind === 'iPhone Merchant'
+      ? 'Suspiciously Premium Benefactor Box'
+      : 'Questionably Sideloaded Adventurer Box',
+  };
+  db.prepare(`INSERT INTO world_settings(key,value) VALUES ('travelling_merchant',?)
+    ON CONFLICT(key) DO UPDATE SET value=excluded.value`).run(JSON.stringify(merchant));
+  if (previous.bssid !== merchant.bssid || now - Number(previous.lastSeen || 0) > 10 * 60 * 1000) {
+    logEvent('merchant',
+      `${merchant.kind} "${merchant.ssid}" entered the dungeon. Prices are fictional; judgment is complimentary.`,
+      merchant);
+  }
+  return merchant;
+}
+
 function addAudience(event, context = {}) {
   const c = db.prepare('SELECT floor FROM crawler WHERE id=1').get();
   const rule = currentFloorRule(c.floor);
@@ -327,6 +378,15 @@ function state() {
   const safeActive = Boolean(db.prepare(
     "SELECT id FROM monsters WHERE lower(ssid)=lower(?) AND last_seen >= datetime('now','-2 minutes')"
   ).get(safeSsid));
+  let travellingMerchant = {};
+  try {
+    travellingMerchant = JSON.parse(setting('travelling_merchant', '{}') || '{}');
+  } catch {
+    travellingMerchant = {};
+  }
+  travellingMerchant.active = Boolean(
+    travellingMerchant.lastSeen && Date.now() - Number(travellingMerchant.lastSeen) < 3 * 60 * 1000
+  );
   return {
     audience: db.prepare('SELECT * FROM audience WHERE id=1').get(),
     lootBoxes: boxes,
@@ -335,12 +395,14 @@ function state() {
     sponsors: db.prepare('SELECT * FROM sponsors WHERE active=1 ORDER BY id').all(),
     floorRule: currentFloorRule(crawler.floor),
     safeRoom: { ssid: safeSsid, active: safeActive },
+    travellingMerchant,
     bossTiers: BOSS_TIERS,
   };
 }
 
 module.exports = {
-  currentFloorRule, isHomeNetwork, isTrustedDevice, enterSafeRoom, addAudience, trainSkill,
+  currentFloorRule, isHomeNetwork, isTrustedDevice, isMobileMerchant,
+  visitTravellingMerchant, enterSafeRoom, addAudience, trainSkill,
   skillBonuses, bossTierFor, awardBox, openSealedBoxes, evaluateSponsors,
   onNetwork, onBattle, onDefeat, onVictory, state,
 };
