@@ -131,30 +131,55 @@
       <section class="panel" id="controls-panel">
         <div class="panel-header">GAME CONTROLS</div>
         <div id="game-controls">
-          <button data-action="paused" data-value="toggle">PAUSE / RESUME</button>
-          <button data-action="heal">REST NOW</button>
-          <button data-action="town">VISIT TOWN</button>
-          <select id="difficulty-control">
-            <option value="relaxed">RELAXED</option><option value="normal">NORMAL</option><option value="brutal">BRUTAL</option>
-          </select>
-          <select id="display-control">
-            <option value="auto">AUTO PAGES</option><option value="battle">BATTLE</option>
-            <option value="character">CHARACTER</option><option value="quest">QUEST</option>
-            <option value="donut">DONUT</option><option value="loot">EQUIPMENT</option><option value="summary">SUMMARY</option>
-          </select>
-          <div class="display-page-buttons">
-            <button type="button" data-page="auto">AUTO</button>
-            <button type="button" data-page="battle">BATTLE</button>
-            <button type="button" data-page="character">CARL</button>
-            <button type="button" data-page="quest">QUEST</button>
-            <button type="button" data-page="donut">DONUT</button>
-            <button type="button" data-page="loot">LOOT</button>
+          <div class="control-group">
+            <div class="control-group-title">QUICK ACTIONS</div>
+            <div class="control-action-grid">
+              <button data-action="paused" data-value="toggle">PAUSE / RESUME</button>
+              <button data-action="heal">REST NOW</button>
+              <button data-action="town">VISIT TOWN</button>
+              <button data-action="prestige" class="danger-button">PRESTIGE</button>
+            </div>
           </div>
-          <select id="equipment-control">
-            <option value="balanced">BALANCED LOOT</option><option value="power">POWER FIRST</option><option value="defense">DEFENSE FIRST</option>
-          </select>
-          <button data-action="refresh">REFRESH DISPLAY</button>
-          <button data-action="prestige" class="danger-button">PRESTIGE</button>
+
+          <div class="control-group display-control-group">
+            <div class="control-group-title">DISPLAY ON DONUT</div>
+            <label class="control-field">
+              <span>PAGE MODE</span>
+              <select id="display-control">
+                <option value="auto">AUTO PAGES</option><option value="battle">BATTLE</option>
+                <option value="character">CHARACTER</option><option value="quest">QUEST</option>
+                <option value="donut">DONUT</option><option value="loot">EQUIPMENT</option><option value="summary">SUMMARY</option>
+              </select>
+            </label>
+            <div class="display-page-buttons">
+              <button type="button" data-page="auto">AUTO</button>
+              <button type="button" data-page="battle">BATTLE</button>
+              <button type="button" data-page="character">CARL</button>
+              <button type="button" data-page="quest">QUEST</button>
+              <button type="button" data-page="donut">DONUT</button>
+              <button type="button" data-page="loot">LOOT</button>
+              <button type="button" data-page="summary">SUMMARY</button>
+            </div>
+            <button class="refresh-display-button" data-action="refresh">REFRESH DISPLAY NOW</button>
+          </div>
+
+          <div class="control-group">
+            <div class="control-group-title">GAME SETTINGS</div>
+            <div class="control-settings-grid">
+              <label class="control-field">
+                <span>DIFFICULTY</span>
+                <select id="difficulty-control">
+                  <option value="relaxed">RELAXED</option><option value="normal">NORMAL</option><option value="brutal">BRUTAL</option>
+                </select>
+              </label>
+              <label class="control-field">
+                <span>LOOT PRIORITY</span>
+                <select id="equipment-control">
+                  <option value="balanced">BALANCED LOOT</option><option value="power">POWER FIRST</option><option value="defense">DEFENSE FIRST</option>
+                </select>
+              </label>
+            </div>
+          </div>
         </div>
       </section>
       <section class="panel" id="recap-panel">

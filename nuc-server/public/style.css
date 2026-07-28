@@ -815,7 +815,9 @@ main {
 
 #game-controls {
   padding: 14px;
-  gap: 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 #game-controls button, #game-controls select {
   min-height: 42px;
@@ -837,6 +839,63 @@ main {
   background: #68251f;
 }
 #game-controls .danger-button { color: #8c211c; border-color: #8c211c; }
+
+.control-group {
+  padding: 12px;
+  background: #e7dfca;
+  border: 1px solid #c1b59b;
+  border-radius: 8px;
+}
+
+.control-group-title {
+  margin-bottom: 9px;
+  color: #554d40;
+  font: 800 10px/1.2 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 1.2px;
+}
+
+.control-action-grid,
+.control-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.control-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.control-field > span {
+  color: #625c50;
+  font: 800 10px/1.2 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: .7px;
+}
+
+.control-field select { width: 100%; }
+
+.display-control-group .control-field { margin-bottom: 9px; }
+
+.display-page-buttons {
+  grid-column: auto;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+  padding: 0;
+}
+
+.display-page-buttons button:last-child {
+  grid-column: span 2;
+}
+
+#game-controls .refresh-display-button {
+  width: 100%;
+  margin-top: 8px;
+  color: #fff;
+  background: #4b463c;
+  border-color: #4b463c;
+}
 
 #weekly-recap {
   color: #312d26;
@@ -907,6 +966,8 @@ main {
   .monster-icon-wrap { height: 86px; }
   .monster-icon { width: 82px; height: 82px; }
   #game-controls { grid-template-columns: 1fr; }
-  .display-page-buttons { grid-column: 1; grid-template-columns: repeat(3, 1fr); }
+  .display-page-buttons { grid-column: 1; grid-template-columns: repeat(2, 1fr); }
+  .display-page-buttons button:last-child { grid-column: auto; }
+  .control-action-grid, .control-settings-grid { grid-template-columns: 1fr; }
   #game-controls select, #game-controls button { font-size: 13px; }
 }
