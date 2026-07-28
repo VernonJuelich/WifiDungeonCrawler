@@ -59,6 +59,14 @@ function moodFor({ victory = false, defeated = false, critical = false, stamina,
   return isNight() ? 'cautious' : 'curious';
 }
 
+function battleQuip(event) {
+  if (event.bossCharge) return 'SYSTEM: A charged attack! Sixty seconds of standing still finally paid off.';
+  if (event.critical) return 'SYSTEM: A critical hit. Please remain calm; competence may be temporary.';
+  if (!event.hit) return 'SYSTEM: You missed. Fortunately, humiliation requires no accuracy roll.';
+  if (event.enemyHits) return `SYSTEM: You dealt ${event.damage}. It dealt ${event.enemyDamage}. Riveting arithmetic, crawler.`;
+  return `SYSTEM: ${event.damage} damage. The audience has seen stronger WiFi passwords.`;
+}
+
 async function advanceEncounter(bssid, signal, dwellSeconds = 0) {
   let crawler = recoverCrawler(db.prepare('SELECT * FROM crawler WHERE id=1').get());
   let monster = db.prepare('SELECT * FROM monsters WHERE bssid=?').get(bssid);
@@ -133,6 +141,9 @@ async function advanceEncounter(bssid, signal, dwellSeconds = 0) {
     });
     event.message = message;
     logEvent('encounter', message, event);
+  } else if (Math.floor(turn / 60) > Math.floor((monster.dwell_seconds || 0) / 60)) {
+    event.message = battleQuip(event);
+    logEvent('battle_turn', event.message, event);
   }
   broadcast('event', event);
 

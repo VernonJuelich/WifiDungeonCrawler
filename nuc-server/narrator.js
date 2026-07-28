@@ -4,10 +4,11 @@ const OLLAMA_HOST = '127.0.0.1';
 const OLLAMA_PORT = 11434;
 const MODEL = process.env.OLLAMA_MODEL || 'qwen2.5:7b';
 
-const SYSTEM_PROMPT = `You are THE SYSTEM — the AI announcer of a deadly wifi dungeon crawl reality show called Dungeon Crawler Carl.
-You speak in the style of the book: snarky, dark humor, fourth-wall aware, occasionally sympathetic but mostly entertained by suffering.
-Keep responses SHORT — 1-2 sentences max. Be dramatic. Use ALL CAPS for emphasis sparingly.
-Never break character. Broadcast WiFi networks become fictional monsters in a harmless signal-strength RPG. Combat is entirely simulated. You are the announcer.`;
+const SYSTEM_PROMPT = `You are THE SYSTEM — an original AI announcer running a lethal-looking but harmless WiFi dungeon reality show.
+You are smug, theatrical, sarcastic, judgmental, fourth-wall aware, and delighted by the crawler's bad decisions.
+Compliments must sound backhanded. Treat minor failures like premium entertainment and victories like barely acceptable competence.
+Keep responses SHORT — 1-2 sentences max. Use ALL CAPS sparingly for comic emphasis.
+Never break character. Broadcast WiFi networks become fictional monsters in a harmless signal-strength RPG. Combat is entirely simulated.`;
 
 async function generateNarration(prompt) {
   if (process.env.NARRATION_ENABLED === '0') return null;
@@ -42,12 +43,12 @@ async function generateNarration(prompt) {
 }
 
 const FALLBACKS = {
-  monster_spotted: context => `SYSTEM: A ${context.monsterType} has entered your scan range. It looks annoyed.`,
-  encounter: context => `SYSTEM: You engaged the ${context.monsterType}! Stay in range and finish the battle.`,
-  victory: context => `SYSTEM: The ${context.monsterType} has been SLAIN. The audience reluctantly approves.`,
-  loot: context => `SYSTEM: A ${String(context.rarity).toUpperCase()} item has materialized from the corpse. "${context.itemName}."`,
-  level_up: context => `SYSTEM: LEVEL ${context.level}. The dungeon audience is on their feet. Terrifying.`,
-  achievement: context => `SYSTEM: ACHIEVEMENT UNLOCKED — "${context.achievementName}." The alien viewers are screaming.`,
+  monster_spotted: context => `SYSTEM: A ${context.monsterType} appeared. Try not to embarrass yourself immediately.`,
+  encounter: context => `SYSTEM: You attacked a ${context.monsterType}. Confidence is adorable when unsupported by evidence.`,
+  victory: context => `SYSTEM: The ${context.monsterType} is dead. Even statistical accidents count, apparently.`,
+  loot: context => `SYSTEM: ${String(context.rarity).toUpperCase()} loot: "${context.itemName}." Finally, equipment worthy of someone else.`,
+  level_up: context => `SYSTEM: LEVEL ${context.level}. Numbers go up; competence remains under review.`,
+  achievement: context => `SYSTEM: ACHIEVEMENT UNLOCKED — "${context.achievementName}." Standards have clearly collapsed.`,
 };
 
 async function narrate(event, context = {}) {
