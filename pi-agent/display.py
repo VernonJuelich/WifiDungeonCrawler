@@ -1,5 +1,6 @@
 """Ragnar-inspired, character-centric e-ink HUD for the safe WiFi RPG."""
 import json
+import glob
 import os
 import sys
 import time
@@ -90,6 +91,33 @@ def _paste_center(canvas, image, y):
         canvas.paste(image, ((W - image.width) // 2, y))
 
 
+def _character_frame(target, events):
+    """Rotate Bjorn artwork by game state, Ragnar-style."""
+    latest_type = (events[0].get("type") if events else "") or ""
+    if latest_type in ("victory", "loot"):
+        folders = ("NetworkScanner", "IDLE")
+    elif target and target.get("status") == "engaged":
+        folders = ("NetworkScanner",)
+    else:
+        folders = ("IDLE",)
+
+    frames = []
+    for folder in folders:
+        frames.extend(sorted(glob.glob(
+            f"/home/bjorn/Bjorn/resources/images/status/{folder}/*.bmp"
+        )))
+
+    if frames:
+        frame_path = frames[int(time.time() // UPDATE_SEC) % len(frames)]
+        try:
+            frame = Image.open(frame_path).convert("L")
+            frame.thumbnail((105, 83), Image.Resampling.LANCZOS)
+            return frame.convert("1")
+        except Exception:
+            pass
+    return _asset("bjorn1.bmp", (105, 83))
+
+
 def _render(state):
     global _quip_index
     image = Image.new("1", (W, H), 1)
@@ -138,7 +166,7 @@ def _render(state):
     draw.text((3, 51), _fit(line1, body, W - 6), font=body, fill=0)
     draw.text((3, 62), _fit(line2, body, W - 6), font=body, fill=0)
 
-    portrait = _asset("bjorn1.bmp", (105, 83))
+    portrait = _character_frame(target, events)
     _paste_center(image, portrait, 74)
 
     # Decorative divider inspired by Ragnar's frise strip.

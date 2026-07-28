@@ -106,9 +106,69 @@ def scan_wifi_networks() -> list[dict]:
                 "channel":    chan,
                 "hidden":     hidden,
             })
+        return networks or scan_wifi_with_iw()
+    except Exception as e:
+        print(f"[AGENT] nmcli scan unavailable: {e}; trying passive iw scan")
+        return scan_wifi_with_iw()
+
+def _channel_from_frequency(frequency: int) -> int:
+    if frequency == 2484:
+        return 14
+    if 2412 <= frequency <= 2472:
+        return (frequency - 2407) // 5
+    if 5000 <= frequency <= 5895:
+        return (frequency - 5000) // 5
+    if 5955 <= frequency <= 7115:
+        return (frequency - 5950) // 5
+    return 0
+
+def scan_wifi_with_iw() -> list[dict]:
+    """Passive beacon scan for adapters intentionally unmanaged by NetworkManager."""
+    try:
+        result = subprocess.run(
+            ["iw", "dev", WIFI_INTERFACE, "scan", "passive"],
+            capture_output=True, text=True, timeout=30
+        )
+        if result.returncode != 0:
+            print(f"[AGENT] iw scan failed: {result.stderr.strip()}")
+            return []
+
+        networks = []
+        current = None
+        for raw_line in result.stdout.splitlines():
+            line = raw_line.strip()
+            if line.startswith("BSS "):
+                if current:
+                    networks.append(current)
+                bssid = line.split()[1].split("(")[0].upper()
+                current = {
+                    "bssid": bssid, "ssid": "", "encryption": "open",
+                    "signal": -90, "channel": 0, "hidden": True,
+                }
+            elif current and line.startswith("SSID:"):
+                current["ssid"] = line[5:].strip()
+                current["hidden"] = not bool(current["ssid"])
+            elif current and line.startswith("signal:"):
+                try:
+                    current["signal"] = int(float(line.split()[1]))
+                except (ValueError, IndexError):
+                    pass
+            elif current and line.startswith("freq:"):
+                try:
+                    current["channel"] = _channel_from_frequency(int(line.split()[1]))
+                except (ValueError, IndexError):
+                    pass
+            elif current and line.startswith("RSN:"):
+                current["encryption"] = "WPA2"
+            elif current and ("Authentication suites:" in line and "SAE" in line):
+                current["encryption"] = "WPA3"
+            elif current and line.startswith("WPA:") and current["encryption"] == "open":
+                current["encryption"] = "WPA"
+        if current:
+            networks.append(current)
         return networks
     except Exception as e:
-        print(f"[AGENT] WiFi scan failed: {e}")
+        print(f"[AGENT] Passive iw scan failed: {e}")
         return []
 
 # ── Scan loop ─────────────────────────────────────────────────────────────────
@@ -117,7 +177,7 @@ def scan_loop():
     while True:
         networks = scan_wifi_networks()
         if not networks:
-            print("[AGENT] No networks from Bjorn yet...")
+            print("[AGENT] No WiFi beacons detected yet...")
             time.sleep(SCAN_INTERVAL)
             continue
 
