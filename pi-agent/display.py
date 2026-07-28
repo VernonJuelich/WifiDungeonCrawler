@@ -318,17 +318,36 @@ def _render_page(state, page):
         frames = glob.glob(f"{CHARACTER_ROOT}/talking/*.bmp")
         if frames:
             try:
-                _paste_center(image, Image.open(frames[0]).convert("1"), 30)
+                portrait = Image.open(frames[0]).convert("1")
+                portrait.thumbnail((105, 82), Image.Resampling.LANCZOS)
+                _paste_center(image, portrait, 24)
             except Exception:
                 pass
-        rows = [
-            f"{donut.get('name','Donut')}  LV {donut.get('level',1)}",
-            f"MOOD {str(donut.get('mood','judgmental')).upper()}",
-            f"FRIENDSHIP {donut.get('friendship',0)}",
-            f"HEALS {donut.get('heals',0)}  FINDS {donut.get('finds',0)}",
-            f"THEFTS {donut.get('steals',0)}",
-            "No witnesses. No refunds.",
-        ]
+        draw.line((3, 110, W - 4, 110), fill=0)
+        name = str(donut.get("name") or "Donut").upper()
+        level = int(donut.get("level") or 1)
+        mood = str(donut.get("mood") or "judgmental").upper()
+        friendship = int(donut.get("friendship") or 0)
+        draw.text((4, 115), _fit(name, bold, 70, True), font=bold, fill=0)
+        level_text = f"LV {level}"
+        draw.text((W - body.getlength(level_text) - 4, 117), level_text, font=body, fill=0)
+        draw.text((4, 130), _fit(f"MOOD: {mood}", tiny, W - 8, True), font=tiny, fill=0)
+        draw.text((4, 143), "FRIENDSHIP", font=tiny, fill=0)
+        draw.rectangle((4, 154, W - 5, 162), outline=0)
+        friendship_fill = int((W - 11) * (friendship % 25) / 25)
+        if friendship and friendship % 25 == 0:
+            friendship_fill = W - 11
+        draw.rectangle((5, 155, 5 + friendship_fill, 161), fill=0)
+        draw.text((4, 169), f"HEALS {donut.get('heals',0)}", font=tiny, fill=0)
+        draw.text((43, 169), f"FINDS {donut.get('finds',0)}", font=tiny, fill=0)
+        draw.text((82, 169), f"THEFTS {donut.get('steals',0)}", font=tiny, fill=0)
+        action = str(donut.get("last_action") or "judging Carl")
+        message = f"Donut is {action}. No witnesses. No refunds."
+        y = 185
+        for line in _wrap(message, body, W - 10, 4):
+            draw.text((4, y), line, font=body, fill=0)
+            y += 12
+        return image
     else:
         recap = (state.get("weeklyRecap") or {}).get("message") or "The accountants are still counting."
         regions = state.get("regions") or []
