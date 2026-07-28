@@ -165,6 +165,33 @@ main {
 }
 
 #character-sheet, #quest-card { padding: 12px; }
+#donut-card, #daily-quests, #weekly-recap, #boss-list { padding: 10px; }
+.donut-name { color: var(--gold); font: 700 13px 'Cinzel',serif; }
+.donut-mood, .micro-stats { color: var(--text-dim); font-size: 9px; margin: 5px 0; }
+.donut-fill { background: linear-gradient(90deg,var(--accent2),var(--gold)); }
+.daily-item { padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 10px; }
+.daily-item b { color: var(--text); display: inline-block; width: calc(100% - 42px); }
+.daily-item > span { color: var(--gold); float: right; }
+.daily-item small { color: var(--text-dim); display: block; margin-top: 3px; }
+.daily-item.completed { opacity: .6; }
+.tiny-track { height: 5px; margin-top: 5px; }
+#world-map { padding: 10px; }
+.map-field { height: 150px; position: relative; border: 1px solid var(--border);
+  background: radial-gradient(circle at center,rgba(123,47,255,.13),transparent 60%); overflow: hidden; }
+.map-field::before { content:''; position:absolute; inset:15%; border:1px dashed var(--border); transform:rotate(-8deg); }
+.map-node { position:absolute; color:var(--gold); font-size:16px; z-index:1; }
+.map-node span { display:block; color:var(--text-dim); font-size:8px; width:90px; transform:translateX(-35px); text-align:center; }
+.notable-monster { padding:6px; border-top:1px solid var(--border); font-size:10px; }
+.notable-monster b { color:var(--red); }
+.notable-monster span { float:right; color:var(--text-dim); }
+#weekly-recap { color:var(--gold); font-size:11px; line-height:1.5; font-style:italic; }
+#game-controls { padding:10px; display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+#game-controls button, #game-controls select {
+  background:var(--bg3); color:var(--text); border:1px solid var(--accent); padding:7px;
+  font:10px 'Share Tech Mono',monospace;
+}
+#game-controls button:hover { color:var(--gold); border-color:var(--gold); cursor:pointer; }
+#game-controls .danger-button { border-color:var(--red); color:var(--red); }
 .sheet-grid {
   display: grid; grid-template-columns: 1fr auto 1fr auto;
   gap: 7px 9px; font-size: 10px; color: var(--text-dim);

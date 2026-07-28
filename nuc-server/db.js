@@ -146,9 +146,80 @@ for (const [name, definition] of [
   ['town_trips', 'INTEGER DEFAULT 0'],
   ['last_active', 'TEXT'],
   ['offline_seconds', 'INTEGER DEFAULT 0'],
+  ['prestige', 'INTEGER DEFAULT 0'],
+  ['prestige_points', 'INTEGER DEFAULT 0'],
+  ['title', "TEXT DEFAULT 'Unsupervised Crawler'"],
+  ['difficulty', "TEXT DEFAULT 'normal'"],
+  ['paused', 'INTEGER DEFAULT 0'],
+  ['display_page', "TEXT DEFAULT 'auto'"],
+  ['equipment_priority', "TEXT DEFAULT 'balanced'"],
 ]) {
   if (!crawlerColumns.has(name)) db.exec(`ALTER TABLE crawler ADD COLUMN ${name} ${definition}`);
 }
+
+for (const [name, definition] of [
+  ['sightings', 'INTEGER DEFAULT 1'],
+  ['encounters', 'INTEGER DEFAULT 0'],
+  ['defeats', 'INTEGER DEFAULT 0'],
+  ['best_signal', 'INTEGER DEFAULT -100'],
+  ['last_signal', 'INTEGER DEFAULT -100'],
+  ['lore_title', "TEXT DEFAULT ''"],
+  ['nemesis', 'INTEGER DEFAULT 0'],
+  ['region_id', "TEXT DEFAULT ''"],
+]) {
+  if (!monsterColumns.has(name)) db.exec(`ALTER TABLE monsters ADD COLUMN ${name} ${definition}`);
+}
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS companion (
+    id INTEGER PRIMARY KEY,
+    name TEXT DEFAULT 'Donut',
+    level INTEGER DEFAULT 1,
+    friendship INTEGER DEFAULT 0,
+    mood TEXT DEFAULT 'judgmental',
+    finds INTEGER DEFAULT 0,
+    heals INTEGER DEFAULT 0,
+    steals INTEGER DEFAULT 0,
+    last_action TEXT
+  );
+  INSERT OR IGNORE INTO companion (id) VALUES (1);
+
+  CREATE TABLE IF NOT EXISTS daily_quests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    quest_date TEXT,
+    code TEXT,
+    title TEXT,
+    description TEXT,
+    progress INTEGER DEFAULT 0,
+    required INTEGER DEFAULT 1,
+    reward_gold INTEGER DEFAULT 0,
+    reward_xp INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'active',
+    UNIQUE(quest_date, code)
+  );
+
+  CREATE TABLE IF NOT EXISTS regions (
+    id TEXT PRIMARY KEY,
+    name TEXT,
+    fingerprint TEXT UNIQUE,
+    discovered_at TEXT DEFAULT (datetime('now')),
+    last_seen TEXT DEFAULT (datetime('now')),
+    visits INTEGER DEFAULT 1,
+    room_count INTEGER DEFAULT 0
+  );
+
+  CREATE TABLE IF NOT EXISTS world_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS weekly_recaps (
+    week_key TEXT PRIMARY KEY,
+    message TEXT,
+    data TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+`);
 
 // Existing saves already have levels; grant the base stats those levels earned.
 db.exec(`

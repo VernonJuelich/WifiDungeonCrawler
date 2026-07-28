@@ -3,6 +3,7 @@ const db = require('./db');
 const { rollLoot, addXP, checkAchievements, logEvent } = require('./game-engine');
 const { narrate } = require('./narrator');
 const progression = require('./progression-engine');
+const world = require('./world-engine');
 
 let eventEmitter = null;
 const FLOOR_KILLS = 5;
@@ -41,14 +42,20 @@ function recoverCrawler(crawler) {
 function ensureMonsterStats(monster, crawler) {
   const bossByMilestone = crawler.kills > 0 && crawler.kills % FLOOR_KILLS === FLOOR_KILLS - 1;
   const rareBoss = seededByte(monster.bssid, 'boss') < 14;
-  const isBoss = monster.is_boss || bossByMilestone || rareBoss;
+  const notoriousBoss = Number(monster.best_signal || monster.signal || -100) >= -42
+    || Number(monster.sightings || 0) >= 20 || Number(monster.nemesis || 0) === 1;
+  const isBoss = monster.is_boss || bossByMilestone || rareBoss || notoriousBoss;
   const maxHp = monster.max_hp || Math.max(25, 30 + monster.cr * 14) * (isBoss ? 2 : 1);
   const hp = monster.hp > 0 ? monster.hp : maxHp;
   const roomId = monster.room_id || `F${crawler.floor}-CH${monster.channel || 0}`;
+  const titles = ['Devourer of Bandwidth', 'The Unrebooted', 'Keeper of Buffering', 'Lord of Channel Six'];
+  const loreTitle = isBoss
+    ? `${monster.ssid || 'The Hidden One'}, ${titles[seededByte(monster.bssid, 'title') % titles.length]}`
+    : monster.lore_title;
   db.prepare(`
-    UPDATE monsters SET hp=?, max_hp=?, is_boss=?, room_id=? WHERE bssid=?
-  `).run(hp, maxHp, isBoss ? 1 : 0, roomId, monster.bssid);
-  return { ...monster, hp, max_hp: maxHp, is_boss: isBoss ? 1 : 0, room_id: roomId };
+    UPDATE monsters SET hp=?, max_hp=?, is_boss=?, room_id=?,lore_title=? WHERE bssid=?
+  `).run(hp, maxHp, isBoss ? 1 : 0, roomId, loreTitle, monster.bssid);
+  return { ...monster, hp, max_hp: maxHp, is_boss: isBoss ? 1 : 0, room_id: roomId, lore_title: loreTitle };
 }
 
 function moodFor({ victory = false, defeated = false, critical = false, stamina, isBoss, signal }) {
@@ -70,6 +77,7 @@ function battleQuip(event) {
 
 async function advanceEncounter(bssid, signal, dwellSeconds = 0) {
   let crawler = recoverCrawler(db.prepare('SELECT * FROM crawler WHERE id=1').get());
+  if (crawler.paused) return { status: 'paused', crawler };
   let monster = db.prepare('SELECT * FROM monsters WHERE bssid=?').get(bssid);
   if (!monster) return { error: 'monster_not_found' };
   monster = ensureMonsterStats(monster, crawler);
@@ -89,7 +97,8 @@ async function advanceEncounter(bssid, signal, dwellSeconds = 0) {
   const turn = Math.max(monster.dwell_seconds || 0, Number(dwellSeconds || 0));
   const roll = seededByte(bssid, turn, crawler.kills);
   const closeness = clamp(100 + Number(signal || -90), 5, 55);
-  const accuracy = clamp(55 + closeness * 0.7 + crawler.level, 55, 96);
+  const difficultyAccuracy = crawler.difficulty === 'relaxed' ? 8 : crawler.difficulty === 'brutal' ? -7 : 0;
+  const accuracy = clamp(55 + closeness * 0.7 + crawler.level + difficultyAccuracy, 45, 98);
   const hit = (roll % 100) < accuracy;
   const critical = hit && ((roll >> 2) % 100) < (10 + Math.floor(closeness / 5));
   const nightBonus = isNight() ? 2 : 0;
@@ -107,8 +116,9 @@ async function advanceEncounter(bssid, signal, dwellSeconds = 0) {
   const stamina = Math.max(0, crawler.stamina - (critical ? 10 : 8));
   const enemyRoll = seededByte(bssid, turn, 'counter');
   const enemyHits = hp > 0 && enemyRoll % 100 < clamp(35 + monster.cr * 2, 35, 78);
+  const difficultyDamage = crawler.difficulty === 'relaxed' ? -2 : crawler.difficulty === 'brutal' ? 3 : 0;
   const enemyDamage = enemyHits
-    ? Math.max(1, 2 + Math.floor(monster.cr / 2) + (monster.is_boss ? 4 : 0) - crawler.armor_power)
+    ? Math.max(1, 2 + Math.floor(monster.cr / 2) + (monster.is_boss ? 4 : 0) + difficultyDamage - crawler.armor_power)
     : 0;
   const crawlerHealth = Math.max(0, crawler.health - enemyDamage);
   const defeated = crawlerHealth <= 0;
@@ -135,6 +145,8 @@ async function advanceEncounter(bssid, signal, dwellSeconds = 0) {
     crawlerHealth, crawlerMaxHealth: crawler.max_health,
     stamina, maxStamina: crawler.max_stamina, mood,
   };
+  const companion = world.onBattle(monster, event);
+  if (companion) event.companion = companion;
 
   if ((monster.dwell_seconds || 0) === 0) {
     const message = await narrate('encounter', {
@@ -153,6 +165,7 @@ async function advanceEncounter(bssid, signal, dwellSeconds = 0) {
     db.prepare("UPDATE monsters SET status='alive' WHERE bssid=?").run(bssid);
     logEvent('defeat', message, event);
     broadcast('event', { ...event, type: 'defeat', message });
+    world.onDefeat(monster);
     return { status: 'defeat', ...event };
   }
 
@@ -196,7 +209,10 @@ async function handleVictory(monster, battle) {
 
   const loot = rollLoot(monster.monster_type, monster.ssid);
   const stats = itemStats(loot);
-  const autoEquip = stats.power > crawler.weapon_power || stats.defense > crawler.armor_power;
+  const priority = crawler.equipment_priority || 'balanced';
+  const autoEquip = priority === 'power' ? stats.power > crawler.weapon_power
+    : priority === 'defense' ? stats.defense > crawler.armor_power
+    : stats.power > crawler.weapon_power || stats.defense > crawler.armor_power;
   if (autoEquip) {
     if (stats.power) db.prepare("UPDATE loot SET equipped=0 WHERE power>0").run();
     if (stats.defense) db.prepare("UPDATE loot SET equipped=0 WHERE defense>0").run();
@@ -237,7 +253,11 @@ async function handleVictory(monster, battle) {
   }
 
   const town = progression.visitTownIfNeeded();
-  if (town) broadcast('event', { type: 'town', ...town });
+  if (town) {
+    const theft = world.townTheft();
+    broadcast('event', { type: 'town', ...town, theft });
+  }
+  world.onVictory(monster, item);
   progression.snapshot();
 
   for (const code of [

@@ -26,6 +26,10 @@ const EVENT_ICONS = {
   act_up:           '★',
   town:             '🏪',
   offline:          '⌛',
+  companion:        '🐈',
+  daily_complete:   '✓',
+  region:           '⌖',
+  prestige:         '♜',
   'system-boot':   '⚡',
 };
 
@@ -45,6 +49,47 @@ function renderAll() {
   renderAchievements(state.achievements);
   renderProgression(state);
   renderEncounterQueue(state.monsters);
+  renderWorld(state);
+}
+
+function renderWorld(s) {
+  const d = s.companion || {};
+  const friendship = d.friendship || 0;
+  document.getElementById('donut-card').innerHTML = `
+    <div class="donut-name">${escHtml(d.name || 'Donut')} · LV ${d.level || 1}</div>
+    <div class="donut-mood">MOOD: ${escHtml((d.mood || 'judgmental').toUpperCase())}</div>
+    <div class="progress-track"><div class="progress-fill donut-fill" style="width:${friendship % 25 / 25 * 100}%"></div>
+      <span>FRIENDSHIP ${friendship}</span></div>
+    <div class="micro-stats">HEALS ${d.heals || 0} · FINDS ${d.finds || 0} · THEFTS ${d.steals || 0}</div>`;
+
+  document.getElementById('daily-quests').innerHTML = (s.dailyQuests || []).map(q => {
+    const pct = Math.min(100, (q.progress || 0) / Math.max(1, q.required) * 100);
+    return `<div class="daily-item ${q.status}">
+      <b>${escHtml(q.title)}</b><span>${q.progress}/${q.required}</span>
+      <div class="progress-track tiny-track"><div class="progress-fill" style="width:${pct}%"></div></div>
+      <small>${escHtml(q.description)}</small></div>`;
+  }).join('') || '<div class="empty-state">The daily bureaucracy is asleep.</div>';
+
+  const map = s.map || [];
+  document.getElementById('world-map').innerHTML = map.length
+    ? `<div class="map-field">${map.map((r, i) => `<div class="map-node" style="left:${5 + r.x * .88}%;top:${8 + r.y * .72}%"
+        title="${escHtml(r.name)}">${i === 0 ? '◆' : '◇'}<span>${escHtml(r.name)}</span></div>`).join('')}</div>`
+    : '<div class="empty-state">Walk somewhere. Geography refuses to generate itself.</div>';
+
+  const notable = [...(s.nemeses || []).map(m => ({ ...m, tag: 'NEMESIS' })),
+    ...(s.bosses || []).map(m => ({ ...m, tag: 'BOSS' }))].slice(0, 6);
+  document.getElementById('boss-list').innerHTML = notable.map(m =>
+    `<div class="notable-monster"><b>${m.tag}</b> ${escHtml(m.lore_title || m.monster_name)}
+      <span>${m.victories || 0}W/${m.defeats || 0}L · BEST ${m.best_signal || m.signal} dBm</span></div>`).join('');
+
+  document.getElementById('weekly-recap').textContent =
+    s.weeklyRecap?.message || 'The dungeon accountants are still counting.';
+  const difficulty = document.getElementById('difficulty-control');
+  const display = document.getElementById('display-control');
+  const equipment = document.getElementById('equipment-control');
+  if (difficulty) difficulty.value = s.crawler?.difficulty || 'normal';
+  if (display) display.value = s.crawler?.display_page || 'auto';
+  if (equipment) equipment.value = s.crawler?.equipment_priority || 'balanced';
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -263,6 +308,7 @@ function renderProgression(s) {
       <span>WEAPON</span><b>+${c.weapon_power || 0}</b><span>ARMOR</span><b>+${c.armor_power || 0}</b>
       <span>GOLD</span><b>${c.gold || 0}</b><span>TOWN TRIPS</span><b>${c.town_trips || 0}</b>
       <span>QUESTS</span><b>${c.quests_completed || 0}</b><span>OFFLINE</span><b>${Math.floor((c.offline_seconds || 0)/60)}m</b>
+      <span>PRESTIGE</span><b>${c.prestige || 0}</b><span>TITLE</span><b>${escHtml(c.title || 'Crawler')}</b>
     </div>`;
   renderHistory(s.history || []);
 }
@@ -498,8 +544,36 @@ function initRename() {
   input.addEventListener('blur', saveName);
 }
 
+async function sendControl(action, value = true) {
+  const res = await fetch('/api/control', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action, value }),
+  });
+  const result = await res.json();
+  showAnnouncement(result.message || result.error || `${action.toUpperCase()} UPDATED`);
+  await fetchState();
+}
+
+function initControls() {
+  document.getElementById('game-controls').addEventListener('click', e => {
+    const button = e.target.closest('button[data-action]');
+    if (!button) return;
+    const action = button.dataset.action;
+    if (action === 'prestige' && !confirm('Begin a prestige run? Current level, floor, kills and act will reset.')) return;
+    const value = action === 'paused' ? !Boolean(state.crawler?.paused) : true;
+    sendControl(action, value);
+  });
+  document.getElementById('difficulty-control').addEventListener('change', e =>
+    sendControl('difficulty', e.target.value));
+  document.getElementById('display-control').addEventListener('change', e =>
+    sendControl('display_page', e.target.value));
+  document.getElementById('equipment-control').addEventListener('change', e =>
+    sendControl('equipment_priority', e.target.value));
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 fetchState();
 connectSSE();
 initRename();
+initControls();
 setInterval(fetchState, 30000);

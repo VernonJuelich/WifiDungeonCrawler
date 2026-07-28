@@ -177,7 +177,7 @@ def _character_frame(target, events, has_monsters, crawler):
     return _asset("bjorn1.bmp", (105, 83))
 
 
-def _render(state):
+def _render_battle(state):
     global _quip_index
     image = Image.new("1", (W, H), 1)
     draw = ImageDraw.Draw(image)
@@ -221,6 +221,15 @@ def _render(state):
         line1 = f"{boss}{target.get('monster_type', 'Monster')}"
         line2 = ssid
         hp_text = f"{hp} / {max_hp}"
+    elif page == "loot":
+        loot = state.get("loot") or []
+        rows = ["AUTOMATIC EQUIPMENT"]
+        for item in loot[:7]:
+            equipped = "*" if item.get("equipped") else "-"
+            rows.append(f"{equipped} {str(item.get('rarity','')).upper()}")
+            rows.append(item.get("item_name") or "Questionable object")
+        if not loot:
+            rows += ["Inventory empty.", "Donut blames Carl."]
     else:
         line1, line2 = "SCANNING THE DUNGEON", "No monster in range"
         hp_text = ""
@@ -271,6 +280,87 @@ def _render(state):
         y += 10
 
     return image
+
+
+def _render_page(state, page):
+    """Render compact non-battle pages for the automatic e-ink rotation."""
+    image = Image.new("1", (W, H), 1)
+    draw = ImageDraw.Draw(image)
+    tiny, body, bold = _font(7), _font(8), _font(10, bold=True)
+    crawler = state.get("crawler") or {}
+    draw.rectangle((0, 0, W - 1, H - 1), outline=0)
+    draw.text((4, 4), _fit(page.upper(), bold, W - 8, True), font=bold, fill=0)
+    draw.line((2, 19, W - 3, 19), fill=0)
+
+    if page == "character":
+        portrait = _character_frame(None, [], False, crawler)
+        _paste_center(image, portrait, 24)
+        rows = [
+            f"{crawler.get('name','Carl')}  LV {crawler.get('level',1)}",
+            f"STR {crawler.get('strength',5)}  DEX {crawler.get('dexterity',5)}",
+            f"VIT {crawler.get('vitality',5)}  INT {crawler.get('intelligence',5)}",
+            f"WEAPON +{crawler.get('weapon_power',0)}  ARMOR +{crawler.get('armor_power',0)}",
+            f"PRESTIGE {crawler.get('prestige',0)}  GOLD {crawler.get('gold',0)}",
+        ]
+    elif page == "quest":
+        quest = state.get("quest") or {}
+        rows = [
+            f"ACT {crawler.get('act',1)} · FLOOR {crawler.get('floor',1)}",
+            quest.get("title") or "Awaiting destiny",
+            f"QUEST {quest.get('progress',0)} / {quest.get('required',0)}",
+        ]
+        y = 65
+        for daily in state.get("dailyQuests") or []:
+            rows.append(f"{'X' if daily.get('status') == 'completed' else '>'} {daily.get('title','')}")
+            rows.append(f"  {daily.get('progress',0)}/{daily.get('required',0)}")
+    elif page == "donut":
+        donut = state.get("companion") or {}
+        frames = glob.glob(f"{CHARACTER_ROOT}/talking/*.bmp")
+        if frames:
+            try:
+                _paste_center(image, Image.open(frames[0]).convert("1"), 30)
+            except Exception:
+                pass
+        rows = [
+            f"{donut.get('name','Donut')}  LV {donut.get('level',1)}",
+            f"MOOD {str(donut.get('mood','judgmental')).upper()}",
+            f"FRIENDSHIP {donut.get('friendship',0)}",
+            f"HEALS {donut.get('heals',0)}  FINDS {donut.get('finds',0)}",
+            f"THEFTS {donut.get('steals',0)}",
+            "No witnesses. No refunds.",
+        ]
+    else:
+        recap = (state.get("weeklyRecap") or {}).get("message") or "The accountants are still counting."
+        regions = state.get("regions") or []
+        bosses = state.get("bosses") or []
+        rows = [
+            f"KILLS {crawler.get('kills',0)}  FLOOR {crawler.get('floor',1)}",
+            f"ROOMS {len(state.get('monsters') or [])}  REGIONS {len(regions)}",
+            f"BOSSES {len(bosses)}  QUESTS {crawler.get('quests_completed',0)}",
+            "", recap,
+        ]
+
+    y = 116 if page in ("character", "donut") else 28
+    for text in rows:
+        for line in _wrap(text, body if y < 150 else tiny, W - 10, 2):
+            if y > H - 11:
+                break
+            draw.text((4, y), line, font=body if y < 150 else tiny, fill=0)
+            y += 11
+        y += 2
+    return image
+
+
+def _render(state):
+    crawler = state.get("crawler") or {}
+    requested = crawler.get("display_page") or "auto"
+    engaged = any(m.get("status") == "engaged" for m in state.get("monsters") or [])
+    if requested == "battle" or engaged:
+        return _render_battle(state)
+    if requested == "auto":
+        pages = ("battle", "character", "quest", "donut", "loot", "summary")
+        requested = pages[int(time.time() // 120) % len(pages)]
+    return _render_battle(state) if requested == "battle" else _render_page(state, requested)
 
 
 def display_loop():

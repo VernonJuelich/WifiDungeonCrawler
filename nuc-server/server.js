@@ -7,6 +7,7 @@ const { narrate } = require('./narrator');
 const battleEngine = require('./battle-engine');
 const { scoreTargets, getModelStats } = require('./ai-targeting');
 const progression = require('./progression-engine');
+const world = require('./world-engine');
 
 const app = express();
 const PORT = Number(process.env.PORT || 9310);
@@ -49,6 +50,8 @@ app.post('/api/network', async (req, res) => {
   if (existing) {
     db.prepare(`UPDATE monsters SET last_seen=datetime('now'), signal=?, clients=? WHERE bssid=?`)
       .run(signal, clients || 0, bssid);
+    world.recordNetwork({ bssid, signal }, false);
+    world.regionFor(db.prepare("SELECT bssid FROM monsters WHERE last_seen >= datetime('now','-3 minutes')").all());
     return res.json({ status: 'updated', monsterType, cr });
   }
 
@@ -57,6 +60,8 @@ app.post('/api/network', async (req, res) => {
   db.prepare(`INSERT INTO monsters (bssid,ssid,encryption,signal,channel,vendor,monster_type,monster_name,cr,xp_value)
     VALUES (?,?,?,?,?,?,?,?,?,?)`)
     .run(bssid, ssid, encryption, signal, channel, vendor || '', monsterType, monsterName, cr, xpValue);
+  world.recordNetwork({ bssid, signal }, true);
+  world.regionFor(db.prepare("SELECT bssid FROM monsters WHERE last_seen >= datetime('now','-3 minutes')").all());
 
   // Respond immediately — narration happens async via SSE
   res.json({ status: 'new_monster', monsterType, cr, xpValue });
@@ -112,13 +117,14 @@ app.get('/api/state', (req, res) => {
   const achievements = db.prepare('SELECT * FROM achievements ORDER BY unlocked_at DESC').all();
   const events       = db.prepare('SELECT * FROM events ORDER BY created_at DESC LIMIT 30').all();
   const progress     = progression.progressionState();
+  const worldState   = world.state();
 
   // Attach AI scores to each monster for dashboard display
   const scored   = scoreTargets(monsters);
   const scoreMap = Object.fromEntries(scored.map(s => [s.bssid, s.ai_score]));
   const monstersWithAI = monsters.map(m => ({ ...m, ai_score: scoreMap[m.bssid] ?? null }));
 
-  res.json({ crawler, monsters: monstersWithAI, loot, achievements, events, ...progress });
+  res.json({ crawler, monsters: monstersWithAI, loot, achievements, events, ...progress, ...worldState });
 });
 
 app.get('/api/chronicle', (req, res) => {
@@ -155,6 +161,38 @@ app.get('/api/targeting/stats', (req, res) => {
 app.get('/api/leaderboard', (req, res) => {
   const top = db.prepare("SELECT ssid, monster_type, xp_value, encryption FROM monsters WHERE status='dead' ORDER BY xp_value DESC LIMIT 10").all();
   res.json(top);
+});
+
+app.post('/api/control', (req, res) => {
+  const { action, value } = req.body || {};
+  if (action === 'town') {
+    const result = progression.visitTownIfNeeded(true) || { message: 'Town refused entry. Inventory insufficiently embarrassing.' };
+    return res.json(result);
+  }
+  if (action === 'heal') {
+    db.prepare("UPDATE crawler SET health=max_health,stamina=max_stamina,mood='refreshed' WHERE id=1").run();
+    logEvent('rest', 'Carl was ordered to rest. He filed a complaint with nobody.', {});
+    return res.json({ status: 'rested' });
+  }
+  if (action === 'prestige') {
+    const result = world.prestige();
+    return res.status(result.error ? 400 : 200).json(result);
+  }
+  if (action === 'refresh') {
+    logEvent('display_refresh', 'The display was ordered to refresh. Pixels report for duty.', {});
+    bus.emit('event', { type: 'display_refresh', message: 'Display refresh requested.' });
+    return res.json({ message: 'Display refresh queued.' });
+  }
+  const result = world.setControl(action, value);
+  return res.status(result.error ? 400 : 200).json(result);
+});
+
+app.get('/api/monster/:bssid', (req, res) => {
+  const monster = db.prepare('SELECT * FROM monsters WHERE bssid=?').get(req.params.bssid);
+  if (!monster) return res.status(404).json({ error: 'monster not found' });
+  const history = db.prepare("SELECT * FROM events WHERE data LIKE ? ORDER BY id DESC LIMIT 50")
+    .all(`%${req.params.bssid}%`);
+  res.json({ monster, history });
 });
 
 app.listen(PORT, '0.0.0.0', () => {

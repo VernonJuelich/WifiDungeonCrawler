@@ -71,9 +71,9 @@ function inventoryState() {
   return { count, capacity: crawler.inventory_capacity, full: count >= crawler.inventory_capacity };
 }
 
-function visitTownIfNeeded() {
+function visitTownIfNeeded(force = false) {
   const inventory = inventoryState();
-  if (!inventory.full) return null;
+  if (!inventory.full && !force) return null;
   const sale = db.prepare(`
     SELECT COALESCE(SUM(CASE rarity
       WHEN 'legendary' THEN 90 WHEN 'rare' THEN 40 WHEN 'uncommon' THEN 18 ELSE 7 END),0) gold,

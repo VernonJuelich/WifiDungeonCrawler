@@ -65,6 +65,14 @@
         <div class="panel-header">CHARACTER SHEET</div>
         <div id="character-sheet"></div>
       </section>
+      <section class="panel" id="donut-panel">
+        <div class="panel-header">DONUT · PARTY MEMBER</div>
+        <div id="donut-card"></div>
+      </section>
+      <section class="panel" id="daily-panel">
+        <div class="panel-header">DAILY QUESTS</div>
+        <div id="daily-quests"></div>
+      </section>
       <section class="panel fill-panel" id="achievements-panel">
         <div class="panel-header">TROPHY CASE</div>
         <div id="achievement-list">
@@ -84,6 +92,11 @@
         <div class="monster-grid" id="monster-grid">
           <div class="empty-dungeon">No monsters detected. The dungeon is silent. That's worse.</div>
         </div>
+      </section>
+      <section class="panel" id="world-panel">
+        <div class="panel-header">REGION MAP · NEMESES & BOSSES</div>
+        <div id="world-map"></div>
+        <div id="boss-list"></div>
       </section>
 
       <section class="panel" id="encounter-panel">
@@ -114,6 +127,31 @@
       <section class="panel" id="history-panel">
         <div class="panel-header">PROGRESSION HISTORY</div>
         <canvas id="history-chart" height="130"></canvas>
+      </section>
+      <section class="panel" id="controls-panel">
+        <div class="panel-header">GAME CONTROLS</div>
+        <div id="game-controls">
+          <button data-action="paused" data-value="toggle">PAUSE / RESUME</button>
+          <button data-action="heal">REST NOW</button>
+          <button data-action="town">VISIT TOWN</button>
+          <select id="difficulty-control">
+            <option value="relaxed">RELAXED</option><option value="normal">NORMAL</option><option value="brutal">BRUTAL</option>
+          </select>
+          <select id="display-control">
+            <option value="auto">AUTO PAGES</option><option value="battle">BATTLE</option>
+            <option value="character">CHARACTER</option><option value="quest">QUEST</option>
+            <option value="donut">DONUT</option><option value="loot">EQUIPMENT</option><option value="summary">SUMMARY</option>
+          </select>
+          <select id="equipment-control">
+            <option value="balanced">BALANCED LOOT</option><option value="power">POWER FIRST</option><option value="defense">DEFENSE FIRST</option>
+          </select>
+          <button data-action="refresh">REFRESH DISPLAY</button>
+          <button data-action="prestige" class="danger-button">PRESTIGE</button>
+        </div>
+      </section>
+      <section class="panel" id="recap-panel">
+        <div class="panel-header">WEEKLY DUNGEON RECAP</div>
+        <div id="weekly-recap"></div>
       </section>
     </div>
   </main>
