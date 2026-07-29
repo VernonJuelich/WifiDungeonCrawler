@@ -315,3 +315,14 @@ A typical deployment may contain the following components:
 │ Web UI      │  │ E-paper UI  │
 │ Dashboard   │  │ Companion   │
 └─────────────┘  └─────────────┘
+
+
+MIT License
+
+Copyright (c) 2026 Vernon Juelich
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files to deal in the Software
+without restriction, including without limitation the rights to use, copy,
+modify, merge, publish, distribute, sublicense, and/or sell copies of the
+Software, subject to the conditions included in the full MIT Licence.
