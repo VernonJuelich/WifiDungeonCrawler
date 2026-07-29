@@ -1,0 +1,637 @@
+"""Ragnar-inspired, character-centric e-ink HUD for the safe WiFi RPG."""
+import json
+import glob
+import os
+import sys
+import time
+import urllib.request
+
+sys.path.insert(0, "/home/bjorn/Bjorn/resources")
+from waveshare_epd import epd2in13_V4
+from PIL import Image, ImageDraw, ImageFont, ImageOps
+
+from config import NUC_BASE
+
+W, H = 122, 250
+UPDATE_SEC = 30
+PAGE_ROTATE_SEC = 60
+CONTROL_POLL_SEC = 3
+MIN_STATE_REFRESH_SEC = 12
+ASSET_ROOT = "/home/bjorn/Bjorn/resources/images/static"
+CHARACTER_ROOT = "/home/bjorn/dungeon/assets/characters"
+DONUT_ROOT = "/home/bjorn/dungeon/assets/donut"
+LOOT_ROOT = "/home/bjorn/dungeon/assets/loot"
+
+QUIPS = [
+    "The audience demands battle. Apparently standards were not included.",
+    "Stay in range, crawler. Running away was already focus-tested.",
+    "Every signal hides a monster. Most have better uptime than Carl.",
+    "Loot awaits the persistent. Dignity remains unavailable.",
+    "The dungeon is always watching. It has filed several complaints.",
+    "Standing still is not tactics, but the boss attack disagrees.",
+    "Donut has reviewed the plan. There will be no appeal.",
+    "Competence detected. Recalibrating sensors.",
+]
+_quip_index = 0
+
+
+def _state():
+    try:
+        with urllib.request.urlopen(f"{NUC_BASE}/api/state", timeout=5) as response:
+            return json.loads(response.read())
+    except Exception:
+        return {}
+
+
+def _font(size=9, bold=False, viking=False):
+    choices = []
+    if viking:
+        choices += [
+            "/home/bjorn/Bjorn/resources/fonts/Viking.TTF",
+            "/home/bjorn/Bjorn/resources/fonts/Cartoon.ttf",
+        ]
+    choices.append(
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+        if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+    )
+    for path in choices:
+        try:
+            return ImageFont.truetype(path, size)
+        except OSError:
+            pass
+    return ImageFont.load_default()
+
+
+def _fit(text, font, width, ellipsis=False):
+    text = str(text or "")
+    if font.getlength(text) <= width:
+        return text
+    marker = "..." if ellipsis else ""
+    while text and font.getlength(text + marker) > width:
+        text = text[:-1]
+    return text.rstrip() + marker
+
+
+def _wrap(text, font, width, limit=2):
+    words, lines, current = str(text or "").split(), [], ""
+    for word in words:
+        # Split unusually long names/words so they cannot cross the border.
+        while font.getlength(word) > width:
+            chunk = _fit(word, font, width)
+            if current:
+                lines.append(current)
+                current = ""
+            lines.append(chunk)
+            word = word[len(chunk):]
+        candidate = f"{current} {word}".strip()
+        if current and font.getlength(candidate) > width:
+            lines.append(current)
+            current = word
+        else:
+            current = candidate
+    if current:
+        lines.append(current)
+    if len(lines) > limit:
+        lines = lines[:limit]
+        last = lines[-1]
+        # Prefer removing a complete word instead of displaying half of one.
+        while " " in last and font.getlength(last + "...") > width:
+            last = last.rsplit(" ", 1)[0]
+        lines[-1] = _fit(last, font, width - font.getlength("...")) + "..."
+    return lines
+
+
+def _asset(name, size, invert=False):
+    path = os.path.join(ASSET_ROOT, name)
+    try:
+        image = Image.open(path).convert("L")
+        if invert:
+            image = ImageOps.invert(image)
+        image.thumbnail(size, Image.Resampling.LANCZOS)
+        return image.convert("1")
+    except Exception:
+        return None
+
+
+def _paste_center(canvas, image, y):
+    if image:
+        canvas.paste(image, ((W - image.width) // 2, y))
+
+
+def _support_frame(root, group):
+    frames = sorted(glob.glob(f"{root}/{group}/*.bmp"))
+    if not frames:
+        return None
+    try:
+        frame = Image.open(frames[int(time.time() // UPDATE_SEC) % len(frames)]).convert("1")
+        frame.thumbnail((105, 82), Image.Resampling.NEAREST)
+        return frame
+    except Exception:
+        return None
+
+
+def _loot_group(item):
+    if not item:
+        return "bag"
+    item_type = str(item.get("item_type") or "misc").lower()
+    name = str(item.get("item_name") or "").lower()
+    if item_type == "weapon":
+        return "weapon"
+    if item_type == "armor":
+        for keyword, group in (
+            ("shield", "shield"), ("helmet", "helmet"), ("boot", "boots"),
+            ("belt", "belt"), ("ring", "ring"),
+        ):
+            if keyword in name:
+                return group
+        return "armor"
+    if item_type == "potion":
+        return "healing" if "heal" in name else "potion"
+    if item_type == "scroll":
+        return "book" if "tome" in name or "book" in name else "scroll"
+    if item_type == "artifact":
+        return ("gem", "key", "ring")[sum(ord(char) for char in name) % 3]
+    return ("bag", "pouch", "gold", "key")[sum(ord(char) for char in name) % 4]
+
+
+def _character_frame(target, events, has_monsters, crawler):
+    """Select a Dungeon Crawler Carl pose from the current game state."""
+    latest_type = (events[0].get("type") if events else "") or ""
+    latest_data = {}
+    if events:
+        try:
+            latest_data = events[0].get("data") or {}
+            if isinstance(latest_data, str):
+                latest_data = json.loads(latest_data)
+        except (TypeError, ValueError):
+            latest_data = {}
+    hour = time.localtime().tm_hour
+    health = int(crawler.get("health") or 0)
+    max_health = max(1, int(crawler.get("max_health") or 100))
+    stamina = int(crawler.get("stamina") or 0)
+
+    if latest_type == "dead":
+        group = "dead"
+    elif latest_type == "defeat":
+        group = "dead"
+    elif latest_type in ("level_up", "floor_up", "act_up"):
+        group = "level-up"
+    elif latest_type in ("victory", "achievement"):
+        group = "victory"
+    elif latest_type == "loot":
+        group = "looting"
+    elif latest_type == "town":
+        group = "shopping"
+    elif latest_type == "quest_complete":
+        group = "reading"
+    elif latest_type == "monster_spotted":
+        group = "scared"
+    elif latest_type == "offline":
+        group = "drink-coffee"
+    elif latest_type == "battle_turn" and latest_data.get("critical"):
+        group = "critical-hit"
+    elif latest_type == "battle_turn" and latest_data.get("enemyHits"):
+        group = "take-damage"
+    elif latest_type == "battle_turn" and latest_data.get("bossCharge"):
+        group = "cast-spell"
+    elif latest_type in ("encounter", "battle_turn"):
+        group = "attack" if latest_data.get("hit", True) else "block"
+    elif health < max_health * 0.35:
+        group = "healing"
+    elif stamina < 20 or hour < 6 or hour >= 22:
+        group = "resting"
+    elif target and target.get("status") == "engaged":
+        group = "attack"
+    elif has_monsters:
+        group = ("walk", "run")[int(time.time() // UPDATE_SEC) % 2]
+    else:
+        idle_groups = ("idle", "thinking", "talking", "drink-coffee")
+        group = idle_groups[int(time.time() // UPDATE_SEC) % len(idle_groups)]
+
+    frames = sorted(glob.glob(f"{CHARACTER_ROOT}/{group}/*.bmp"))
+
+    if frames:
+        frame_path = frames[int(time.time() // UPDATE_SEC) % len(frames)]
+        try:
+            frame = Image.open(frame_path).convert("L")
+            frame.thumbnail((105, 83), Image.Resampling.LANCZOS)
+            return frame.convert("1")
+        except Exception:
+            pass
+    return _asset("bjorn1.bmp", (105, 83))
+
+
+def _render_battle(state):
+    global _quip_index
+    image = Image.new("1", (W, H), 1)
+    draw = ImageDraw.Draw(image)
+    tiny = _font(7)
+    body = _font(8)
+    bold = _font(9, bold=True)
+    title = _font(15, bold=True, viking=True)
+
+    crawler = state.get("crawler") or {}
+    monsters = state.get("monsters") or []
+    loot = state.get("loot") or []
+    events = state.get("events") or []
+
+    engaged = next((m for m in monsters if m.get("status") == "engaged"), None)
+    target = engaged or next((m for m in monsters if m.get("status") != "dead"), None)
+
+    # Ragnar-style outer frame, title, and compact counter strip.
+    draw.rectangle((0, 0, W - 1, H - 1), outline=0)
+    heading = "DUNGEON"
+    draw.text(((W - title.getlength(heading)) / 2, 3), heading, font=title, fill=0)
+
+    stats = [
+        ("target.bmp", len(monsters)),
+        ("gold.bmp", len(loot)),
+        ("level.bmp", crawler.get("level", 1)),
+    ]
+    x_positions = (5, 44, 84)
+    for x, (icon_name, value) in zip(x_positions, stats):
+        icon = _asset(icon_name, (15, 15))
+        if icon:
+            image.paste(icon, (x, 24))
+        draw.text((x + 17, 26), _fit(str(value), bold, W - x - 21, True), font=bold, fill=0)
+    draw.line((1, 44, W - 2, 44), fill=0)
+
+    # Two compact status lines above a large central character.
+    if target:
+        ssid = target.get("ssid") or "[Hidden]"
+        hp = int(target.get("hp") or 0)
+        max_hp = max(1, int(target.get("max_hp") or 1))
+        boss_tier = str(target.get("boss_tier") or "").upper()
+        boss = f"{boss_tier} " if target.get("is_boss") and boss_tier else ("BOSS " if target.get("is_boss") else "")
+        line1 = f"{boss}{target.get('monster_type', 'Monster')}"
+        line2 = ssid
+        hp_text = f"{hp} / {max_hp}"
+    else:
+        line1, line2 = "SCANNING THE DUNGEON", "No monster in range"
+        hp_text = ""
+    draw.text((3, 47), _fit(line1, body, W - 16, True), font=body, fill=0)
+    hp_width = body.getlength(hp_text)
+    draw.text((3, 58), _fit(line2, body, W - hp_width - 20, True), font=body, fill=0)
+    if hp_text:
+        draw.text((W - hp_width - 6, 58), hp_text, font=body, fill=0)
+
+    portrait = _character_frame(target, events, bool(monsters), crawler)
+    _paste_center(image, portrait, 68)
+
+    name = crawler.get("name") or "Carl"
+    xp = int(crawler.get("xp") or 0)
+    xp_next = max(1, int(crawler.get("xp_next") or 100))
+    mood = crawler.get("mood") or "curious"
+    health = int(crawler.get("health") or 0)
+    max_health = max(1, int(crawler.get("max_health") or 100))
+    stamina = int(crawler.get("stamina") or 0)
+    max_stamina = max(1, int(crawler.get("max_stamina") or 100))
+    quest = state.get("quest") or {}
+    quest_progress = int(quest.get("progress") or 0)
+    quest_required = int(quest.get("required") or 0)
+    draw.text((3, 151), _fit(name.upper(), bold, 60, True), font=bold, fill=0)
+    draw.text((65, 152), _fit(f"QUEST {quest_progress}/{quest_required}", tiny, W - 72, True), font=tiny, fill=0)
+    draw.text((3, 163), _fit(f"MOOD: {mood.upper()}", tiny, W - 16, True), font=tiny, fill=0)
+    draw.text((3, 175), "HP", font=tiny, fill=0)
+    draw.rectangle((19, 176, 57, 181), outline=0)
+    draw.rectangle((20, 177, 20 + int(36 * health / max_health), 180), fill=0)
+    draw.text((62, 175), "ST", font=tiny, fill=0)
+    draw.rectangle((78, 176, W - 4, 181), outline=0)
+    draw.rectangle((79, 177, 79 + int((W - 84) * stamina / max_stamina), 180), fill=0)
+    message = ""
+    for event in events:
+        if event.get("message"):
+            message = event["message"]
+            break
+    if not message:
+        message = QUIPS[_quip_index % len(QUIPS)]
+        _quip_index += 1
+    for prefix in ("THE SYSTEM:", "SYSTEM:", "ANNOUNCER:"):
+        if message.upper().startswith(prefix):
+            message = message[len(prefix):].strip()
+            break
+    y = 186
+    for line in _wrap(message, tiny, W - 22, 5):
+        draw.text((4, y), line, font=tiny, fill=0)
+        y += 10
+
+    return image
+
+
+def _render_page(state, page):
+    """Render compact non-battle pages for the automatic e-ink rotation."""
+    image = Image.new("1", (W, H), 1)
+    draw = ImageDraw.Draw(image)
+    tiny, body, bold = _font(7), _font(8), _font(10, bold=True)
+    crawler = state.get("crawler") or {}
+    draw.rectangle((0, 0, W - 1, H - 1), outline=0)
+    draw.text((4, 4), _fit(page.upper(), bold, W - 8, True), font=bold, fill=0)
+    draw.line((2, 19, W - 3, 19), fill=0)
+
+    if page == "character":
+        portrait = _character_frame(None, [], False, crawler)
+        _paste_center(image, portrait, 24)
+        draw.line((3, 110, W - 4, 110), fill=0)
+        name = str(crawler.get("name") or "Carl").upper()
+        level_text = f"LV {crawler.get('level', 1)}"
+        draw.text((4, 115), _fit(name, bold, 75, True), font=bold, fill=0)
+        draw.text((W - body.getlength(level_text) - 4, 117), level_text, font=body, fill=0)
+        draw.text(
+            (4, 130),
+            _fit(str(crawler.get("title") or "Unsupervised Crawler").upper(), tiny, W - 8, True),
+            font=tiny,
+            fill=0,
+        )
+
+        xp = int(crawler.get("xp") or 0)
+        xp_next = max(1, int(crawler.get("xp_next") or 100))
+        draw.text((4, 143), "XP", font=tiny, fill=0)
+        draw.rectangle((19, 144, W - 5, 151), outline=0)
+        xp_fill = int((W - 26) * min(1, xp / xp_next))
+        draw.rectangle((20, 145, 20 + xp_fill, 150), fill=0)
+
+        draw.text((4, 159), f"STR {crawler.get('strength',5)}", font=body, fill=0)
+        draw.text((64, 159), f"DEX {crawler.get('dexterity',5)}", font=body, fill=0)
+        draw.text((4, 173), f"VIT {crawler.get('vitality',5)}", font=body, fill=0)
+        draw.text((64, 173), f"INT {crawler.get('intelligence',5)}", font=body, fill=0)
+        draw.line((3, 187, W - 4, 187), fill=0)
+        draw.text((4, 192), f"WPN +{crawler.get('weapon_power',0)}", font=tiny, fill=0)
+        draw.text((64, 192), f"ARM +{crawler.get('armor_power',0)}", font=tiny, fill=0)
+        draw.text((4, 205), f"GOLD {crawler.get('gold',0)}", font=tiny, fill=0)
+        draw.text((64, 205), f"PREST {crawler.get('prestige',0)}", font=tiny, fill=0)
+        mood = str(crawler.get("mood") or "curious").upper()
+        draw.text((4, 220), _fit(f"MOOD: {mood}", body, W - 8, True), font=body, fill=0)
+        return image
+    elif page == "quest":
+        quest = state.get("quest") or {}
+        act_text = f"ACT {crawler.get('act',1)}"
+        floor_text = f"FLOOR {crawler.get('floor',1)}"
+        draw.text((4, 25), act_text, font=body, fill=0)
+        draw.text((W - body.getlength(floor_text) - 9, 25), floor_text, font=body, fill=0)
+
+        y = 39
+        for line in _wrap(quest.get("title") or "Awaiting bureaucratic destiny", body, W - 12, 2):
+            draw.text((4, y), line, font=body, fill=0)
+            y += 12
+        progress = int(quest.get("progress") or 0)
+        required = max(1, int(quest.get("required") or 1))
+        draw.rectangle((4, 66, W - 5, 74), outline=0)
+        draw.rectangle((5, 67, 5 + int((W - 11) * min(1, progress / required)), 73), fill=0)
+        progress_text = f"{progress}/{required}"
+        draw.text((W - tiny.getlength(progress_text) - 9, 77), progress_text, font=tiny, fill=0)
+        reward = f"{quest.get('reward_xp',0)} XP · {quest.get('reward_gold',0)} GOLD"
+        draw.text((4, 77), _fit(reward, tiny, W - tiny.getlength(progress_text) - 17, True), font=tiny, fill=0)
+
+        draw.line((3, 91, W - 4, 91), fill=0)
+        draw.text((4, 96), "DAILY ORDERS", font=bold, fill=0)
+        y = 110
+        for daily in (state.get("dailyQuests") or [])[:3]:
+            done = daily.get("status") == "completed"
+            short_titles = {
+                "discover": "NEW ROOMS",
+                "battle": "BATTLE TURNS",
+                "victory": "MONSTERS",
+            }
+            title = short_titles.get(str(daily.get("code") or "").lower(), daily.get("title", "ORDER"))
+            label = f"{'X' if done else '>'} {str(title).upper()}"
+            daily_progress = int(daily.get("progress") or 0)
+            daily_required = max(1, int(daily.get("required") or 1))
+            count_text = f"{daily_progress}/{daily_required}"
+            draw.text((4, y), _fit(label, tiny, W - tiny.getlength(count_text) - 17, True), font=tiny, fill=0)
+            draw.text((W - tiny.getlength(count_text) - 9, y), count_text, font=tiny, fill=0)
+            draw.rectangle((4, y + 12, W - 5, y + 17), outline=0)
+            fill = int((W - 11) * min(1, daily_progress / daily_required))
+            draw.rectangle((5, y + 13, 5 + fill, y + 16), fill=0)
+            y += 27
+
+        draw.line((3, 194, W - 4, 194), fill=0)
+        description = quest.get("description") or "The plot remains administratively mandatory."
+        y = 200
+        for line in _wrap(description, tiny, W - 16, 3):
+            draw.text((4, y), line, font=tiny, fill=0)
+            y += 10
+        return image
+    elif page == "donut":
+        donut = state.get("companion") or {}
+        action = str(donut.get("last_action") or "").lower()
+        mood = str(donut.get("mood") or "judgmental").lower()
+        hour = time.localtime().tm_hour
+        if hour < 6 or hour >= 22 or mood in ("sleepy", "tired"):
+            donut_group = "sleep"
+        elif action in ("critical", "steal") or mood in ("violent", "excited"):
+            donut_group = "run"
+        elif action in ("heal", "find") or mood in ("delighted", "playful"):
+            donut_group = "play"
+        else:
+            donut_group = "idle"
+        portrait = _support_frame(DONUT_ROOT, donut_group)
+        _paste_center(image, portrait, 24)
+        draw.line((3, 110, W - 4, 110), fill=0)
+        name = str(donut.get("name") or "Donut").upper()
+        level = int(donut.get("level") or 1)
+        mood = str(donut.get("mood") or "judgmental").upper()
+        friendship = int(donut.get("friendship") or 0)
+        draw.text((4, 115), _fit(name, bold, 70, True), font=bold, fill=0)
+        level_text = f"LV {level}"
+        draw.text((W - body.getlength(level_text) - 4, 117), level_text, font=body, fill=0)
+        draw.text((4, 130), _fit(f"MOOD: {mood}", tiny, W - 8, True), font=tiny, fill=0)
+        draw.text((4, 143), "FRIENDSHIP", font=tiny, fill=0)
+        draw.rectangle((4, 154, W - 5, 162), outline=0)
+        friendship_fill = int((W - 11) * (friendship % 25) / 25)
+        if friendship and friendship % 25 == 0:
+            friendship_fill = W - 11
+        draw.rectangle((5, 155, 5 + friendship_fill, 161), fill=0)
+        draw.text((4, 169), f"HEALS {donut.get('heals',0)}", font=tiny, fill=0)
+        draw.text((64, 169), f"FINDS {donut.get('finds',0)}", font=tiny, fill=0)
+        draw.text((4, 181), f"THEFTS {donut.get('steals',0)}", font=tiny, fill=0)
+        action_text = action or "judging Carl"
+        message = f"Donut is {action_text}. No witnesses. No refunds."
+        y = 197
+        for line in _wrap(message, body, W - 14, 4):
+            draw.text((4, y), line, font=body, fill=0)
+            y += 12
+        return image
+    elif page == "loot":
+        loot = state.get("loot") or []
+        inventory = state.get("inventory") or {}
+        latest = loot[0] if loot else None
+        portrait = _support_frame(LOOT_ROOT, _loot_group(latest))
+        _paste_center(image, portrait, 24)
+        draw.line((3, 110, W - 4, 110), fill=0)
+        inv_text = f"BAG {inventory.get('count', len(loot))}/{inventory.get('capacity', crawler.get('inventory_capacity', 10))}"
+        gold_text = f"GOLD {crawler.get('gold', 0)}"
+        draw.text((4, 115), inv_text, font=body, fill=0)
+        draw.text((64, 115), _fit(gold_text, body, W - 68, True), font=body, fill=0)
+
+        weapon = next((item for item in loot if item.get("equipped") and item.get("power", 0)), None)
+        armor = next((item for item in loot if item.get("equipped") and item.get("defense", 0)), None)
+        draw.text((4, 132), f"WPN +{crawler.get('weapon_power', 0)}", font=tiny, fill=0)
+        y = 142
+        for line in _wrap((weapon or {}).get("item_name") or "Barely armed", tiny, W - 12, 2):
+            draw.text((4, y), line, font=tiny, fill=0)
+            y += 10
+        draw.text((4, 163), f"ARM +{crawler.get('armor_power', 0)}", font=tiny, fill=0)
+        y = 173
+        for line in _wrap((armor or {}).get("item_name") or "Optimistic clothing", tiny, W - 12, 2):
+            draw.text((4, y), line, font=tiny, fill=0)
+            y += 10
+
+        draw.line((3, 194, W - 4, 194), fill=0)
+        if latest:
+            rarity = str(latest.get("rarity") or "common").upper()
+            draw.text((4, 199), f"LATEST · {rarity}", font=tiny, fill=0)
+            y = 211
+            for line in _wrap(latest.get("item_name") or "Questionable object", body, W - 14, 3):
+                draw.text((4, y), line, font=body, fill=0)
+                y += 12
+        else:
+            draw.text((4, 202), "INVENTORY EMPTY", font=bold, fill=0)
+            draw.text((4, 218), "Donut blames Carl.", font=body, fill=0)
+        return image
+    elif page == "recap":
+        recap = state.get("recentRecap") or {}
+        events = state.get("events") or []
+        draw.text((4, 25), "LAST 24 HOURS", font=bold, fill=0)
+        draw.text((4, 43), f"WINS {recap.get('victories',0)}", font=body, fill=0)
+        draw.text((64, 43), f"LOST {recap.get('defeats',0)}", font=body, fill=0)
+        draw.text((4, 58), f"LOOT {recap.get('loot',0)}", font=body, fill=0)
+        draw.text((64, 58), f"TOWN {recap.get('towns',0)}", font=body, fill=0)
+        draw.text((4, 73), f"LEVELS {recap.get('levels',0)}", font=tiny, fill=0)
+        draw.text((64, 73), f"FOUND {recap.get('discoveries',0)}", font=tiny, fill=0)
+        draw.line((3, 87, W - 4, 87), fill=0)
+        draw.text((4, 93), "SYSTEM VERDICT", font=bold, fill=0)
+        y = 108
+        verdict = recap.get("message") or "The accountants found nothing worth exaggerating."
+        for line in _wrap(verdict, tiny, W - 16, 5):
+            draw.text((4, y), line, font=tiny, fill=0)
+            y += 10
+        draw.line((3, 162, W - 4, 162), fill=0)
+        draw.text((4, 168), "RECENT SHAME", font=bold, fill=0)
+        y = 184
+        important_types = {
+            "victory", "defeat", "loot", "level_up", "achievement", "town",
+            "region", "quest_complete", "daily_complete", "prestige", "offline",
+            "loot_box", "box_opened", "safe_room", "sponsor", "skill_up",
+        }
+        recent = [
+            event for event in events
+            if event.get("message") and event.get("type") in important_types
+        ][:3]
+        if not recent:
+            recent = [{"message": "Nothing happened. Somehow this is still Carl's fault."}]
+        for event in recent:
+            text = str(event.get("message") or "")
+            for prefix in ("THE SYSTEM:", "SYSTEM:", "ANNOUNCER:"):
+                if text.upper().startswith(prefix):
+                    text = text[len(prefix):].strip()
+                    break
+            for line in _wrap(f"> {text}", tiny, W - 16, 2):
+                draw.text((4, y), line, font=tiny, fill=0)
+                y += 9
+            y += 2
+        return image
+    else:
+        recap = (state.get("weeklyRecap") or {}).get("message") or "The accountants are still counting."
+        regions = state.get("regions") or []
+        bosses = state.get("bosses") or []
+        name = str(crawler.get("name") or "Carl").upper()
+        level_text = f"LV {crawler.get('level',1)}"
+        draw.text((4, 25), _fit(name, bold, 76, True), font=bold, fill=0)
+        draw.text((W - body.getlength(level_text) - 9, 27), level_text, font=body, fill=0)
+        draw.text((4, 43), f"KILLS {crawler.get('kills',0)}", font=body, fill=0)
+        draw.text((64, 43), f"FLOOR {crawler.get('floor',1)}", font=body, fill=0)
+        draw.text((4, 58), f"ROOMS {len(state.get('monsters') or [])}", font=tiny, fill=0)
+        draw.text((64, 58), f"REGION {len(regions)}", font=tiny, fill=0)
+        draw.text((4, 70), f"BOSSES {len(bosses)}", font=tiny, fill=0)
+        draw.text((64, 70), f"QUEST {crawler.get('quests_completed',0)}", font=tiny, fill=0)
+
+        draw.line((3, 85, W - 4, 85), fill=0)
+        draw.text((4, 91), "WEEKLY RECAP", font=bold, fill=0)
+        y = 106
+        for line in _wrap(recap, tiny, W - 18, 9):
+            draw.text((4, y), line, font=tiny, fill=0)
+            y += 10
+
+        draw.line((3, 199, W - 4, 199), fill=0)
+        draw.text((4, 205), f"GOLD {crawler.get('gold',0)}", font=tiny, fill=0)
+        draw.text((64, 205), f"PREST {crawler.get('prestige',0)}", font=tiny, fill=0)
+        region_name = regions[0].get("name") if regions else "No region mapped"
+        draw.text((4, 219), _fit(region_name, tiny, W - 14, True), font=tiny, fill=0)
+        mood = str(crawler.get("mood") or "curious").upper()
+        draw.text((4, 232), _fit(f"MOOD: {mood}", tiny, W - 8, True), font=tiny, fill=0)
+        return image
+
+    y = 116 if page in ("character", "donut") else 28
+    for text in rows:
+        for line in _wrap(text, body if y < 150 else tiny, W - 10, 2):
+            if y > H - 11:
+                break
+            draw.text((4, y), line, font=body if y < 150 else tiny, fill=0)
+            y += 11
+        y += 2
+    return image
+
+
+def _render(state):
+    crawler = state.get("crawler") or {}
+    requested = crawler.get("display_page") or "auto"
+    engaged = any(m.get("status") == "engaged" for m in state.get("monsters") or [])
+    if requested == "battle":
+        return _render_battle(state)
+    if requested == "auto":
+        if engaged:
+            return _render_battle(state)
+        pages = ("battle", "character", "quest", "donut", "loot", "recap", "summary")
+        requested = pages[int(time.time() // PAGE_ROTATE_SEC) % len(pages)]
+    return _render_battle(state) if requested == "battle" else _render_page(state, requested)
+
+
+def display_loop():
+    print("[DISPLAY] Initializing Ragnar-style RPG display...")
+    try:
+        epd = epd2in13_V4.EPD()
+        epd.init()
+        epd.Clear(0xFF)
+    except Exception as error:
+        print(f"[DISPLAY] Init failed: {error}")
+        return
+
+    last_signature = None
+    last_page_key = None
+    last_refresh = 0
+    while True:
+        try:
+            state = _state()
+            crawler = state.get("crawler") or {}
+            requested = crawler.get("display_page") or "auto"
+            events = state.get("events") or []
+            latest_event = events[0].get("id") if events else None
+            engaged = next(
+                (monster for monster in state.get("monsters") or [] if monster.get("status") == "engaged"),
+                None,
+            )
+            auto_slot = int(time.time() // PAGE_ROTATE_SEC) if requested == "auto" else 0
+            signature = (
+                requested,
+                auto_slot,
+                latest_event,
+                (engaged or {}).get("bssid"),
+                (engaged or {}).get("hp"),
+            )
+            page_key = (requested, auto_slot)
+            now = time.time()
+            page_changed = page_key != last_page_key
+            state_changed = signature != last_signature
+            if (
+                page_changed
+                or (state_changed and now - last_refresh >= MIN_STATE_REFRESH_SEC)
+                or now - last_refresh >= UPDATE_SEC
+            ):
+                epd.display(epd.getbuffer(_render(state)))
+                last_signature = signature
+                last_page_key = page_key
+                last_refresh = now
+                print(f"[DISPLAY] Screen updated: {requested}")
+        except Exception as error:
+            print(f"[DISPLAY] Update error: {error}")
+        time.sleep(CONTROL_POLL_SEC)

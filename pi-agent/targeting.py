@@ -1,12 +1,12 @@
 """
-Targeting engine — tries NUC AI scoring first, falls back to local heuristics.
-The NUC uses historical crack data to score candidates via Bayesian inference.
+Encounter selection — tries NUC scoring first, falls back to local heuristics.
+Scores represent fictional game difficulty and encounter desirability.
 Local scoring is the same rule-based system as before, used when NUC unreachable.
 """
 import time
 import re
 import logging
-from config import MAX_TARGETING_CANDIDATES, DEFAULT_SSID_PATTERNS
+from config import MAX_TARGETING_CANDIDATES, DEFAULT_SSID_PATTERNS, HOME_SAFE_SSID, TRUSTED_SSIDS
 
 log = logging.getLogger(__name__)
 
@@ -48,6 +48,15 @@ def _cooldown_penalty(bssid: str) -> int:
     if time.time() - _attempt_cooldown.get(bssid, 0) < COOLDOWN_SEC:
         return -200
     return 0
+
+MOBILE_MERCHANT_PATTERN = re.compile(
+    r"\b(?:iphone|ipad|ios|android(?:ap)?|galaxy|pixel|oneplus|oppo|redmi|"
+    r"xiaomi|huawei|motorola|moto\s*[a-z0-9]+|phone|mobile hotspot)\b",
+    re.IGNORECASE,
+)
+
+def _is_mobile_merchant(network: dict) -> bool:
+    return bool(MOBILE_MERCHANT_PATTERN.search(str(network.get("ssid", "") or "")))
 
 def _local_score(network: dict) -> float:
     return (
@@ -98,7 +107,13 @@ def _rank_via_nuc(networks: list[dict]) -> list[dict] | None:
 
 def rank(networks: list[dict]) -> list[dict]:
     """Return top candidates sorted by priority. Tries NUC AI, falls back locally."""
-    candidates = [n for n in networks if n.get("bssid")]
+    excluded_ssids = {HOME_SAFE_SSID.lower(), *(ssid.lower() for ssid in TRUSTED_SSIDS)}
+    candidates = [
+        n for n in networks
+        if n.get("bssid")
+        and str(n.get("ssid", "")).strip().lower() not in excluded_ssids
+        and not _is_mobile_merchant(n)
+    ]
 
     # Try NUC-based AI scoring first
     ai_ranked = _rank_via_nuc(candidates)

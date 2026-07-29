@@ -1,23 +1,40 @@
 const MONSTER_ICON = {
-  'Naked Slime':       '/icons/slime.svg',
-  'Armoured Goblin':    '/icons/goblin.svg',
-  'Cave Troll':        '/icons/troll.svg',
-  'Dungeon Wyvern':    '/icons/wyvern.svg',
-  'Dungeon Drake':     '/icons/drake.svg',
-  'The Lich':          '/icons/lich.svg',
-  'Common Peasant':    '/icons/peasant.svg',
-  'Invisible Stalker': '/icons/stalker.svg',
-  'Unknown Horror':    '/icons/horror.svg',
+  'Naked Slime':       '/icons/slime.png',
+  'Armoured Goblin':   '/icons/goblin.png',
+  'Cave Troll':        '/icons/troll.png',
+  'Dungeon Wyvern':    '/icons/wyvern.png',
+  'Dungeon Drake':     '/icons/drake.png',
+  'The Lich':          '/icons/lich.png',
+  'Common Peasant':    '/icons/peasant.png',
+  'Invisible Stalker': '/icons/stalker.png',
+  'Unknown Horror':    '/icons/horror.png',
 };
 
 const EVENT_ICONS = {
   monster_spotted: '👁',
-  handshake:       '💥',
-  kill:            '☠',
+  encounter:       '⚔',
+  battle_turn:     '⚡',
+  victory:         '☠',
+  defeat:          '✚',
+  floor_up:        '⬆',
   loot:            '🎁',
   achievement:     '🏆',
   level_up:        '⬆',
-  crack_fail:      '✗',
+  quest_start:     '📜',
+  quest_progress:  '▰',
+  quest_complete:  '✓',
+  act_up:           '★',
+  town:             '🏪',
+  loot_box:         '▣',
+  box_opened:       '◇',
+  safe_room:        '⌂',
+  sponsor:          '★',
+  skill_up:         '↑',
+  offline:          '⌛',
+  companion:        '🐈',
+  daily_complete:   '✓',
+  region:           '⌖',
+  prestige:         '♜',
   'system-boot':   '⚡',
 };
 
@@ -31,10 +48,216 @@ async function fetchState() {
 
 function renderAll() {
   renderCrawler(state.crawler);
+  renderAnnouncerCommentary(state);
   renderMonsters(state.monsters);
   renderEvents(state.events);
   renderLoot(state.loot);
   renderAchievements(state.achievements);
+  renderProgression(state);
+  renderExpansion(state);
+  renderEncounterQueue(state.monsters);
+  renderWorld(state);
+}
+
+function renderExpansion(s) {
+  const el = document.getElementById('expansion-state');
+  if (!el) return;
+  const audience = s.audience || {};
+  const rule = s.floorRule || {};
+  const sponsors = s.sponsors || [];
+  const skills = (s.skills || []).slice(0, 6);
+  const boxes = (s.lootBoxes || []).slice(0, 5);
+  const safe = s.safeRoom || {};
+  el.innerHTML = `
+    <div class="audience-grid">
+      <div><b>${Number(audience.views || 0).toLocaleString()}</b><span>VIEWS</span></div>
+      <div><b>${Number(audience.followers || 0).toLocaleString()}</b><span>FOLLOWERS</span></div>
+      <div><b>${Number(audience.favorites || 0).toLocaleString()}</b><span>FAVORITES</span></div>
+      <div><b>${Number(audience.rating || 0).toLocaleString()}</b><span>RATING</span></div>
+      <div><b>${Number(audience.peak_viewers || 0).toLocaleString()}</b><span>PEAK LIVE</span></div>
+    </div>
+    <div class="floor-rule-card">
+      <div>
+        <small>FLOOR ${rule.floor || 1} RULE</small>
+        <b>${escHtml(rule.name || 'Unspecified Administrative Hazard')}</b>
+        <span>${escHtml(rule.description || '')}</span>
+      </div>
+      <div class="sealed-boxes"><b>${s.sealedBoxes || 0}</b><span>SEALED BOXES</span></div>
+    </div>
+    <div class="box-strip">
+      ${boxes.length ? boxes.map(box => `<span class="${escHtml(box.status)}">
+        ${escHtml(box.tier)} ${escHtml(box.box_type)} · ${escHtml(box.status)}
+      </span>`).join('') : '<span class="empty">No boxes yet. Sponsors are avoiding eye contact.</span>'}
+    </div>
+    <div class="expansion-columns">
+      <div>
+        <div class="expansion-subhead">SPONSORS</div>
+        ${sponsors.length ? sponsors.map(sponsor => `
+          <div class="sponsor-row">
+            <b>${escHtml(sponsor.name)}</b>
+            <span>FAVOR ${sponsor.favor || 0} · ${sponsor.boxes_sent || 0} BOXES</span>
+          </div>`).join('') : '<div class="empty-state compact">Unlocks on Floor 4. Fame remains pending.</div>'}
+      </div>
+      <div>
+        <div class="expansion-subhead">TRAINED SKILLS</div>
+        ${skills.map(skill => {
+          const pct = Math.min(100, Number(skill.xp || 0) / Math.max(1, Number(skill.xp_next || 1)) * 100);
+          return `<div class="skill-row">
+            <span><b>${escHtml(skill.name)}</b><em>LV ${skill.level}</em></span>
+            <div class="skill-track"><i style="width:${pct}%"></i></div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+    <div class="safe-room-line ${safe.active ? 'active' : ''}">⌂ HOME SAFE ROOM:
+      <b>${escHtml(safe.ssid || 'NOT CONFIGURED')}</b> · ${safe.active ? 'IN RANGE' : 'OUT OF RANGE'}
+      · boxes open automatically on arrival or during town trips</div>`;
+}
+
+function renderAnnouncerCommentary(s) {
+  const c = s.crawler || {};
+  const q = s.quest || {};
+  const ai = s.narrator || {};
+  const aiLabel = ai.available === false
+    ? 'TEMPLATE FALLBACK'
+    : `LOCAL AI · ${String(ai.activeModel || ai.configuredModel || 'OLLAMA').toUpperCase()}`;
+  const progress = Number(q.progress || 0);
+  const required = Number(q.required || 0);
+  const remaining = Math.max(0, required - progress);
+  const importantTypes = new Set([
+    'victory', 'defeat', 'loot', 'achievement', 'level_up', 'quest_complete',
+    'daily_complete', 'floor_up', 'town', 'companion', 'region',
+  ]);
+  const recent = (s.events || []).find(event =>
+    importantTypes.has(event.type) && event.message
+  );
+
+  const notes = {
+    'announcer-character': {
+      label: `ANNOUNCER ASSESSMENT · ${aiLabel}`,
+      lines: [
+        `Crawler Carl is level ${c.level || 1}. This is technically growth.`,
+        `${c.kills || 0} kills recorded. Competence remains under investigation.`,
+      ],
+    },
+    'announcer-quest': {
+      label: `QUEST OUTLOOK · ${aiLabel}`,
+      lines: required
+        ? [
+            `${progress} of ${required} mandatory inconveniences completed.`,
+            remaining
+              ? `${remaining} ${remaining === 1 ? 'remains' : 'remain'}. Donut has declined to carry you.`
+              : 'Objective complete. Management is inventing fresh paperwork.',
+          ]
+        : [
+            'No active quest. Even bureaucracy needs a lunch break.',
+            'Please stand by while destiny locates the correct form.',
+          ],
+    },
+    'announcer-broadcast': {
+      label: `LIVE COMMENTARY · ${aiLabel}`,
+      lines: [
+        recent ? cleanMessage(recent.message) : 'Nothing dramatic has happened. Disappointing.',
+        'Remember: confidence is not armor, despite Carl’s testing.',
+      ],
+    },
+  };
+
+  Object.entries(notes).forEach(([id, note]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = `<div class="announcer-note-label">${escHtml(note.label)}</div>
+      ${note.lines.map(line => `<div class="announcer-note-line">${escHtml(line)}</div>`).join('')}`;
+  });
+}
+
+function renderWorld(s) {
+  const d = s.companion || {};
+  const friendship = d.friendship || 0;
+  document.getElementById('donut-card').innerHTML = `
+    <div class="donut-name">${escHtml(d.name || 'Donut')} · LV ${d.level || 1}</div>
+    <div class="donut-mood">MOOD: ${escHtml((d.mood || 'judgmental').toUpperCase())}</div>
+    <div class="progress-track"><div class="progress-fill donut-fill" style="width:${friendship % 25 / 25 * 100}%"></div>
+      <span>FRIENDSHIP ${friendship}</span></div>
+    <div class="micro-stats">HEALS ${d.heals || 0} · FINDS ${d.finds || 0} · THEFTS ${d.steals || 0}</div>`;
+
+  document.getElementById('daily-quests').innerHTML = (s.dailyQuests || []).map(q => {
+    const pct = Math.min(100, (q.progress || 0) / Math.max(1, q.required) * 100);
+    return `<div class="daily-item ${q.status}">
+      <b>${escHtml(q.title)}</b><span>${q.progress}/${q.required}</span>
+      <div class="progress-track tiny-track"><div class="progress-fill" style="width:${pct}%"></div></div>
+      <small>${escHtml(q.description)}</small></div>`;
+  }).join('') || '<div class="empty-state">The daily bureaucracy is asleep.</div>';
+
+  const map = s.map || [];
+  document.getElementById('world-map').innerHTML = map.length
+    ? `<div class="region-route">${map.slice(0, 12).map((r, i) => {
+        const regionName = String(r.name || 'Unmapped Region').replace(/\bundefined\b/gi, 'Dead Zone');
+        return `<div class="region-card ${i === 0 ? 'current-region' : ''}">
+          <div class="region-step">${i === 0 ? 'CURRENT' : `#${String(i + 1).padStart(2, '0')}`}</div>
+          <div class="region-name">${escHtml(regionName)}</div>
+          <div class="region-meta">
+            <span>${Number(r.room_count || 0)} rooms</span>
+            <span>${Number(r.visits || 0)} visits</span>
+            <span>${relativeTime(r.last_seen)}</span>
+          </div>
+        </div>`;
+      }).join('')}</div>`
+    : '<div class="empty-state">Walk somewhere. Geography refuses to generate itself.</div>';
+
+  const notableByBssid = new Map();
+  for (const monster of [
+    ...(s.nemeses || []).map(m => ({ ...m, tag: 'NEMESIS' })),
+    ...(s.bosses || []).map(m => ({ ...m, tag: 'BOSS' })),
+  ]) {
+    if (monster.status !== 'dead' && !notableByBssid.has(monster.bssid)) {
+      notableByBssid.set(monster.bssid, monster);
+    }
+  }
+  const notable = [...notableByBssid.values()].slice(0, 6);
+  document.getElementById('boss-list').innerHTML = notable.length
+    ? `<div class="threat-heading">KNOWN PROBLEMS CARL HAS NOT SOLVED</div>
+      <div class="threat-grid">${notable.map(m =>
+        `<div class="threat-card ${String(m.tag).toLowerCase()}">
+          <div class="threat-tag">${escHtml(m.boss_tier ? `${m.boss_tier.toUpperCase()} BOSS` : m.tag)}</div>
+          <div class="threat-name">${escHtml(m.lore_title || m.monster_name || m.ssid || 'Unnamed Liability')}</div>
+          <div class="threat-meta">
+            <span>CR ${m.cr || '?'}</span>
+            <span>${m.victories || 0}W / ${m.defeats || 0}L</span>
+            <span>BEST ${m.best_signal || m.signal || '?'} dBm</span>
+          </div>
+        </div>`).join('')}</div>`
+    : '<div class="empty-state">No nemeses yet. Even enemies have standards.</div>';
+
+  const recent = s.recentRecap || {};
+  document.getElementById('weekly-recap').innerHTML = `
+    <div class="recap-stat-grid">
+      <div><b>${recent.victories || 0}</b><span>WINS</span></div>
+      <div><b>${recent.defeats || 0}</b><span>LOSSES</span></div>
+      <div><b>${recent.loot || 0}</b><span>LOOT</span></div>
+      <div><b>${recent.discoveries || 0}</b><span>FOUND</span></div>
+    </div>
+    <div class="recap-verdict">${escHtml(recent.message || 'Nothing happened. The audience has requested a refund.')}</div>
+    <div class="recap-weekly-label">SEVEN-DAY ARCHIVE</div>
+    <div class="recap-weekly-text">${escHtml(s.weeklyRecap?.message || 'The dungeon accountants are still counting.')}</div>`;
+  const difficulty = document.getElementById('difficulty-control');
+  const display = document.getElementById('display-control');
+  const displayPage = s.crawler?.display_page || 'auto';
+  const displayLabels = {
+    auto: 'AUTO ROTATION', battle: 'BATTLE', character: 'CHARACTER', quest: 'QUEST',
+    donut: 'DONUT', loot: 'EQUIPMENT', summary: 'SUMMARY', recap: 'RECAP',
+  };
+  const displayStatus = document.getElementById('display-mode-status');
+  const equipment = document.getElementById('equipment-control');
+  if (difficulty) difficulty.value = s.crawler?.difficulty || 'normal';
+  if (display) display.value = displayPage;
+  if (displayStatus) displayStatus.textContent = displayLabels[displayPage] || 'AUTO ROTATION';
+  if (equipment) equipment.value = s.crawler?.equipment_priority || 'balanced';
+  document.querySelectorAll('.display-page-buttons button[data-page]').forEach(button => {
+    const active = button.dataset.page === displayPage;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
+  });
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -72,6 +295,10 @@ function escHtml(str) {
   return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+function cleanMessage(message) {
+  return String(message || '').replace(/^(THE SYSTEM|SYSTEM|ANNOUNCER):\s*/i, '');
+}
+
 // ── Renderers ─────────────────────────────────────────────────────────────────
 function renderCrawler(c) {
   if (!c) return;
@@ -85,6 +312,17 @@ function renderCrawler(c) {
   const pct = Math.min(100, (xp / xpNext) * 100).toFixed(1);
   document.getElementById('xp-fill').style.width = pct + '%';
   document.getElementById('xp-track-label').textContent = `${xp} / ${xpNext}`;
+  const health = c.health ?? 100;
+  const maxHealth = c.max_health || 100;
+  document.getElementById('health-fill').style.width =
+    Math.min(100, health / maxHealth * 100) + '%';
+  const stamina = c.stamina ?? 100;
+  const maxStamina = c.max_stamina || 100;
+  document.getElementById('stamina-fill').style.width =
+    Math.min(100, stamina / maxStamina * 100) + '%';
+  document.getElementById('health-label').textContent = `${health} / ${maxHealth}`;
+  document.getElementById('stamina-label').textContent = `${stamina} / ${maxStamina}`;
+  document.getElementById('crawler-mood').textContent = (c.mood || 'curious').toUpperCase();
 }
 
 function groupMonsters(monsters) {
@@ -113,7 +351,9 @@ function renderMonsters(monsters) {
     grid.innerHTML = '<div class="empty-dungeon">No monsters detected. The dungeon is silent. That\'s worse.</div>';
     return;
   }
-  const grouped = groupMonsters(monsters);
+  const grouped = groupMonsters(monsters)
+    .sort((a, b) => (a.status === 'dead') - (b.status === 'dead') || (b.signal || -99) - (a.signal || -99))
+    .slice(0, 24);
   grid.innerHTML = grouped.map(m => {
     const vendor  = m.vendor ? escHtml(m.vendor) : '';
     const channel = m.channel ? `CH ${m.channel}` : '';
@@ -122,11 +362,13 @@ function renderMonsters(monsters) {
 
     return `
     <div class="monster-card ${m.status || 'alive'}" title="${escHtml(m.bssids.join('\n'))}">
-      ${m.ai_score != null ? `<span class="ai-score ai-score-${aiTier(m.ai_score)}" title="AI crack probability">${m.ai_score}%</span>` : ''}
+      ${m.ai_score != null && m.status !== 'dead'
+        ? `<span class="ai-score ai-score-${aiTier(m.ai_score)}" title="Encounter priority, not battle progress">THREAT ${m.ai_score}</span>`
+        : m.status === 'dead' ? '<span class="ai-score cleared-score">CLEARED</span>' : ''}
       ${m.count > 1 ? `<span class="monster-count">×${m.count}</span>` : ''}
       <div class="monster-icon-wrap">
         <img class="monster-icon monster-icon-${(m.monster_type||'').toLowerCase().replace(/\s+/g,'-')}"
-          src="${MONSTER_ICON[m.monster_type] || '/icons/horror.svg'}"
+          src="${MONSTER_ICON[m.monster_type] || '/icons/horror.png'}"
           alt="${escHtml(m.monster_type)}"
           onerror="this.style.display='none'">
       </div>
@@ -165,7 +407,7 @@ function renderEvents(events) {
     return `<div class="event-entry ${escHtml(e.type || '')}">
       <span class="event-icon">${icon}</span>
       <span class="event-time">${time}</span>
-      <span class="event-msg">${escHtml(e.message || e.type)}</span>
+      <span class="event-msg">${escHtml(cleanMessage(e.message || e.type))}</span>
     </div>`;
   }).join('') + boot;
 }
@@ -202,11 +444,91 @@ function renderAchievements(achievements) {
   `).join('');
 }
 
+function renderEncounterQueue(monsters) {
+  const queue = document.getElementById('encounter-queue');
+  const active = (monsters || []).filter(m => {
+    if (m.status !== 'engaged' || !m.last_battle_at) return false;
+    return Date.now() - new Date(`${m.last_battle_at}Z`).getTime() < 3 * 60 * 1000;
+  }).slice(0, 4);
+  if (!active.length) {
+    queue.innerHTML = '<div class="empty-state">Move within signal range to begin battle...</div>';
+    return;
+  }
+  queue.innerHTML = active.map(m => {
+    const max = Math.max(1, m.max_hp || 1);
+    const remaining = Math.max(0, m.hp || 0);
+    const progress = Math.max(0, Math.min(100, (1 - remaining / max) * 100));
+    return `<div class="encounter-item encounter-running">
+      <div class="encounter-title">${m.is_boss ? 'BOSS · ' : ''}${escHtml(m.ssid || '[Hidden]')}</div>
+      <div class="progress-track"><div class="progress-fill battle-fill" style="width:${progress}%"></div>
+        <span>${remaining} / ${max} HP</span></div>
+    </div>`;
+  }).join('');
+}
+
+function renderProgression(s) {
+  const c = s.crawler || {};
+  const q = s.quest || {};
+  const inv = s.inventory || { count: 0, capacity: c.inventory_capacity || 10 };
+  document.getElementById('act-label').textContent = `ACT ${c.act || 1}`;
+  const qpct = Math.min(100, ((q.progress || 0) / Math.max(1, q.required || 1)) * 100);
+  document.getElementById('quest-card').innerHTML = `
+    <div class="quest-title">${escHtml(q.title || 'Awaiting bureaucratic destiny')}</div>
+    <div class="quest-desc">${escHtml(q.description || '')}</div>
+    <div class="progress-track"><div class="progress-fill quest-fill" style="width:${qpct}%"></div>
+      <span>${q.progress || 0} / ${q.required || 0}</span></div>
+    <div class="quest-reward">REWARD ${q.reward_xp || 0} XP · ${q.reward_gold || 0} GOLD</div>`;
+  document.getElementById('inventory-count').textContent = `${inv.count}/${inv.capacity}`;
+  document.getElementById('character-sheet').innerHTML = `
+    <div class="sheet-grid">
+      <span>STR</span><b>${c.strength || 5}</b><span>DEX</span><b>${c.dexterity || 5}</b>
+      <span>VIT</span><b>${c.vitality || 5}</b><span>INT</span><b>${c.intelligence || 5}</b>
+      <span>WEAPON</span><b>+${c.weapon_power || 0}</b><span>ARMOR</span><b>+${c.armor_power || 0}</b>
+      <span>GOLD</span><b>${c.gold || 0}</b><span>TOWN TRIPS</span><b>${c.town_trips || 0}</b>
+      <span>QUESTS</span><b>${c.quests_completed || 0}</b><span>OFFLINE</span><b>${Math.floor((c.offline_seconds || 0)/60)}m</b>
+      <span>PRESTIGE</span><b>${c.prestige || 0}</b><span>TITLE</span><b>${escHtml(c.title || 'Crawler')}</b>
+    </div>`;
+  renderHistory(s.history || []);
+}
+
+function renderHistory(history) {
+  const canvas = document.getElementById('history-chart');
+  const ctx = canvas.getContext('2d');
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = Math.max(260, Math.floor(rect.width * devicePixelRatio));
+  canvas.height = 130 * devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  const w = canvas.width / devicePixelRatio, h = 130;
+  ctx.clearRect(0, 0, w, h);
+  ctx.strokeStyle = '#aaa087'; ctx.strokeRect(8, 8, w - 16, h - 24);
+  if (history.length < 2) {
+    ctx.fillStyle = '#625c50'; ctx.font = '11px sans-serif';
+    ctx.fillText('History begins after the next victory.', 16, 68); return;
+  }
+  const series = [
+    ['level', '#17633b'], ['kills', '#8a5a08'], ['gold', '#7b241c'],
+  ];
+  for (const [key, color] of series) {
+    const max = Math.max(1, ...history.map(x => Number(x[key] || 0)));
+    ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 2;
+    history.forEach((x, i) => {
+      const px = 9 + i * (w - 18) / (history.length - 1);
+      const py = h - 17 - Number(x[key] || 0) / max * (h - 28);
+      i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+    });
+    ctx.stroke();
+  }
+  ctx.font = '700 9px sans-serif';
+  ctx.fillStyle = '#17633b'; ctx.fillText('LEVEL', 10, 127);
+  ctx.fillStyle = '#8a5a08'; ctx.fillText('KILLS', 60, 127);
+  ctx.fillStyle = '#7b241c'; ctx.fillText('GOLD', 105, 127);
+}
+
 // ── Popups ────────────────────────────────────────────────────────────────────
 function showAnnouncement(msg) {
   const bar = document.getElementById('announcement-bar');
   const txt = document.getElementById('announcement-text');
-  txt.textContent = msg;
+  txt.textContent = cleanMessage(msg);
   bar.classList.remove('hidden');
   clearTimeout(bar._timer);
   bar._timer = setTimeout(() => bar.classList.add('hidden'), 8000);
@@ -247,17 +569,40 @@ function connectSSE() {
         addEventEntry(data);
         break;
 
-      case 'handshake':
-        updateMonsterStatus(data.bssid, 'wounded');
+      case 'encounter':
+        updateMonsterStatus(data.bssid, 'engaged');
         if (data.message) showAnnouncement(data.message);
         addEventEntry(data);
-        addCrackItem(data.bssid, data.ssid, 'running');
+        updateEncounterItem(data);
         break;
 
-      case 'kill':
+      case 'battle_turn':
+        updateMonsterStatus(data.bssid, 'engaged');
+        updateMonsterBattleState(data);
+        updateEncounterItem(data);
+        updateVitals(data);
+        break;
+
+      case 'victory':
         updateMonsterStatus(data.bssid, 'dead');
+        removeEncounterItem(data.bssid);
         document.getElementById('crawler-kills').textContent =
           parseInt(document.getElementById('crawler-kills').textContent || 0) + 1;
+        if (data.message) showAnnouncement(data.message);
+        addEventEntry(data);
+        updateVitals(data);
+        fetchState();
+        break;
+
+      case 'defeat':
+        updateMonsterStatus(data.bssid, 'alive');
+        updateVitals(data);
+        if (data.message) showAnnouncement(data.message);
+        addEventEntry(data);
+        break;
+
+      case 'floor_up':
+        document.getElementById('crawler-floor').textContent = data.floor;
         if (data.message) showAnnouncement(data.message);
         addEventEntry(data);
         break;
@@ -286,9 +631,15 @@ function connectSSE() {
         addEventEntry(data);
         break;
 
-      case 'crack_fail':
-        addEventEntry(data);
+      case 'quest_progress':
+      case 'quest_complete':
+      case 'act_up':
+      case 'town':
+      case 'offline':
+        if (data.message) { showAnnouncement(data.message); addEventEntry(data); }
+        fetchState();
         break;
+
     }
   };
 
@@ -301,7 +652,7 @@ function addEventEntry(data) {
   div.className = `event-entry ${data.type || ''}`;
   const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   const icon = EVENT_ICONS[data.type] || '·';
-  div.innerHTML = `<span class="event-icon">${icon}</span><span class="event-time">${time}</span><span class="event-msg">${escHtml(data.message || data.type)}</span>`;
+  div.innerHTML = `<span class="event-icon">${icon}</span><span class="event-time">${time}</span><span class="event-msg">${escHtml(cleanMessage(data.message || data.type))}</span>`;
   log.insertBefore(div, log.firstChild);
   while (log.children.length > 50) log.removeChild(log.lastChild);
 }
@@ -312,15 +663,50 @@ function updateMonsterStatus(bssid, status) {
   renderMonsters(state.monsters);
 }
 
-function addCrackItem(bssid, ssid, status) {
-  const queue = document.getElementById('crack-queue');
+function updateMonsterBattleState(data) {
+  const monster = state.monsters.find(m => m.bssid === data.bssid);
+  if (!monster) return;
+  monster.hp = data.hp;
+  monster.max_hp = data.maxHp;
+  monster.last_battle_at = new Date().toISOString().slice(0, 19).replace('T', ' ');
+}
+
+function removeEncounterItem(bssid) {
+  document.getElementById(`encounter-${String(bssid || '').replace(/:/g, '')}`)?.remove();
+  if (!document.querySelector('#encounter-queue .encounter-item')) {
+    document.getElementById('encounter-queue').innerHTML =
+      '<div class="empty-state">Move within signal range to begin battle...</div>';
+  }
+}
+
+function updateEncounterItem(data) {
+  const queue = document.getElementById('encounter-queue');
   const empty = queue.querySelector('.empty-state');
   if (empty) empty.remove();
-  const div = document.createElement('div');
-  div.className = `crack-item crack-${status}`;
-  div.id = `crack-${bssid.replace(/:/g,'')}`;
-  div.textContent = `${ssid || bssid} — cracking...`;
-  queue.insertBefore(div, queue.firstChild);
+  const id = `encounter-${data.bssid.replace(/:/g,'')}`;
+  let div = document.getElementById(id);
+  if (!div) {
+    div = document.createElement('div');
+    div.className = 'encounter-item encounter-running';
+    div.id = id;
+    queue.insertBefore(div, queue.firstChild);
+  }
+  const pct = Math.min(100, Math.round((data.hp / Math.max(1, data.maxHp)) * 100));
+  div.textContent = `${data.isBoss ? 'BOSS — ' : ''}${data.ssid || data.bssid} — HP ${data.hp}/${data.maxHp} (${pct}%)${data.critical ? ' CRITICAL!' : data.hit === false ? ' MISS' : ''}`;
+}
+
+function updateVitals(data) {
+  const health = data.crawlerHealth ?? 0;
+  const maxHealth = data.crawlerMaxHealth || 100;
+  document.getElementById('health-fill').style.width =
+    Math.min(100, health / maxHealth * 100) + '%';
+  const stamina = data.stamina ?? 0;
+  const maxStamina = data.maxStamina || 100;
+  document.getElementById('stamina-fill').style.width =
+    Math.min(100, stamina / maxStamina * 100) + '%';
+  document.getElementById('health-label').textContent = `${health} / ${maxHealth}`;
+  document.getElementById('stamina-label').textContent = `${stamina} / ${maxStamina}`;
+  document.getElementById('crawler-mood').textContent = (data.mood || 'curious').toUpperCase();
 }
 
 // ── Crawler rename ────────────────────────────────────────────────────────────
@@ -360,8 +746,41 @@ function initRename() {
   input.addEventListener('blur', saveName);
 }
 
+async function sendControl(action, value = true) {
+  const res = await fetch('/api/control', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action, value }),
+  });
+  const result = await res.json();
+  showAnnouncement(result.message || result.error || `${action.toUpperCase()} UPDATED`);
+  await fetchState();
+}
+
+function initControls() {
+  document.getElementById('game-controls').addEventListener('click', e => {
+    const pageButton = e.target.closest('button[data-page]');
+    if (pageButton) {
+      sendControl('display_page', pageButton.dataset.page);
+      return;
+    }
+    const button = e.target.closest('button[data-action]');
+    if (!button) return;
+    const action = button.dataset.action;
+    if (action === 'prestige' && !confirm('Begin a prestige run? Current level, floor, kills and act will reset.')) return;
+    const value = action === 'paused' ? !Boolean(state.crawler?.paused) : true;
+    sendControl(action, value);
+  });
+  document.getElementById('difficulty-control').addEventListener('change', e =>
+    sendControl('difficulty', e.target.value));
+  document.getElementById('display-control')?.addEventListener('change', e =>
+    sendControl('display_page', e.target.value));
+  document.getElementById('equipment-control').addEventListener('change', e =>
+    sendControl('equipment_priority', e.target.value));
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 fetchState();
 connectSSE();
 initRename();
+initControls();
 setInterval(fetchState, 30000);

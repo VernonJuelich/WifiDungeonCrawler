@@ -44,6 +44,23 @@
           <span class="xp-track-label" id="xp-track-label">0 / 100</span>
         </div>
       </div>
+      <div class="vitals-row">
+        <div class="vital-block">
+          <span class="xp-label">HP</span>
+          <div class="xp-track vital-track">
+            <div class="xp-fill" id="health-fill" style="width:100%"></div>
+            <span class="xp-track-label" id="health-label">100 / 100</span>
+          </div>
+        </div>
+        <div class="vital-block">
+          <span class="xp-label">ST</span>
+          <div class="xp-track vital-track">
+            <div class="xp-fill" id="stamina-fill" style="width:100%"></div>
+            <span class="xp-track-label" id="stamina-label">100 / 100</span>
+          </div>
+        </div>
+        <span class="mood-badge" id="crawler-mood">CURIOUS</span>
+      </div>
     </div>
   </header>
 
@@ -54,6 +71,19 @@
   <main>
     <!-- LEFT: Trophy Case -->
     <div class="col col-left">
+      <aside class="announcer-note" id="announcer-character" aria-live="polite"></aside>
+      <section class="panel" id="character-panel">
+        <div class="panel-header">CHARACTER SHEET</div>
+        <div id="character-sheet"></div>
+      </section>
+      <section class="panel" id="donut-panel">
+        <div class="panel-header">DONUT · PARTY MEMBER</div>
+        <div id="donut-card"></div>
+      </section>
+      <section class="panel" id="daily-panel">
+        <div class="panel-header">DAILY QUESTS</div>
+        <div id="daily-quests"></div>
+      </section>
       <section class="panel fill-panel" id="achievements-panel">
         <div class="panel-header">TROPHY CASE</div>
         <div id="achievement-list">
@@ -62,25 +92,40 @@
       </section>
     </div>
 
-    <!-- CENTER: Dungeon Map + Crack Pipeline -->
+    <!-- CENTER: Dungeon Map + Battle Queue -->
     <div class="col col-center">
+      <aside class="announcer-note" id="announcer-quest" aria-live="polite"></aside>
+      <section class="panel" id="quest-panel">
+        <div class="panel-header">CURRENT QUEST · <span id="act-label">ACT I</span></div>
+        <div id="quest-card"></div>
+      </section>
+      <section class="panel" id="expansion-panel">
+        <div class="panel-header">AUDIENCE · SPONSORS · CRAWLER DEVELOPMENT</div>
+        <div id="expansion-state"></div>
+      </section>
       <section class="panel" id="dungeon-map">
         <div class="panel-header">DUNGEON MAP <span class="blink">▮</span></div>
         <div class="monster-grid" id="monster-grid">
           <div class="empty-dungeon">No monsters detected. The dungeon is silent. That's worse.</div>
         </div>
       </section>
+      <section class="panel" id="world-panel">
+        <div class="panel-header">REGION MAP · NEMESES & BOSSES</div>
+        <div id="world-map"></div>
+        <div id="boss-list"></div>
+      </section>
 
-      <section class="panel" id="crack-panel">
-        <div class="panel-header">CRACK PIPELINE</div>
-        <div id="crack-queue">
-          <div class="empty-state">Waiting for handshakes...</div>
+      <section class="panel" id="encounter-panel">
+        <div class="panel-header">ACTIVE ENCOUNTERS</div>
+        <div id="encounter-queue">
+          <div class="empty-state">Move within signal range to begin battle...</div>
         </div>
       </section>
     </div>
 
     <!-- RIGHT: System Feed + Loot -->
     <div class="col col-right">
+      <aside class="announcer-note" id="announcer-broadcast" aria-live="polite"></aside>
       <section class="panel" id="system-feed">
         <div class="panel-header">SYSTEM BROADCAST <span class="live-dot"></span></div>
         <div id="event-log">
@@ -93,8 +138,67 @@
       </section>
 
       <section class="panel" id="loot-panel">
-        <div class="panel-header">INVENTORY</div>
+        <div class="panel-header">INVENTORY <span id="inventory-count"></span></div>
         <div id="loot-list"><div class="empty-state">No loot yet. Get to work, crawler.</div></div>
+      </section>
+      <section class="panel" id="history-panel">
+        <div class="panel-header">PROGRESSION HISTORY</div>
+        <canvas id="history-chart" height="130"></canvas>
+      </section>
+      <section class="panel" id="controls-panel">
+        <div class="panel-header">GAME CONTROLS</div>
+        <div id="game-controls">
+          <div class="control-group">
+            <div class="control-group-title">QUICK ACTIONS</div>
+            <div class="control-action-grid">
+              <button data-action="paused" data-value="toggle">PAUSE / RESUME</button>
+              <button data-action="heal">REST NOW</button>
+              <button data-action="town">VISIT TOWN</button>
+              <button data-action="prestige" class="danger-button">PRESTIGE</button>
+            </div>
+          </div>
+
+          <div class="control-group display-control-group">
+            <div class="display-control-heading">
+              <div class="control-group-title">DISPLAY ON DONUT</div>
+              <span id="display-mode-status">AUTO ROTATION</span>
+            </div>
+            <p class="control-help">Choose what the e-ink screen shows. Auto resumes normal page rotation.</p>
+            <div class="display-page-buttons">
+              <button type="button" data-page="auto">AUTO ROTATION</button>
+              <button type="button" data-page="battle">BATTLE</button>
+              <button type="button" data-page="character">CHARACTER</button>
+              <button type="button" data-page="quest">QUEST</button>
+              <button type="button" data-page="donut">DONUT</button>
+              <button type="button" data-page="loot">EQUIPMENT</button>
+              <button type="button" data-page="summary">SUMMARY</button>
+              <button type="button" data-page="recap">RECAP</button>
+            </div>
+            <button class="refresh-display-button" data-action="refresh">REDRAW CURRENT PAGE</button>
+          </div>
+
+          <div class="control-group">
+            <div class="control-group-title">GAME SETTINGS</div>
+            <div class="control-settings-grid">
+              <label class="control-field">
+                <span>DIFFICULTY</span>
+                <select id="difficulty-control">
+                  <option value="relaxed">RELAXED</option><option value="normal">NORMAL</option><option value="brutal">BRUTAL</option>
+                </select>
+              </label>
+              <label class="control-field">
+                <span>LOOT PRIORITY</span>
+                <select id="equipment-control">
+                  <option value="balanced">BALANCED LOOT</option><option value="power">POWER FIRST</option><option value="defense">DEFENSE FIRST</option>
+                </select>
+              </label>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section class="panel" id="recap-panel">
+        <div class="panel-header">WEEKLY DUNGEON RECAP</div>
+        <div id="weekly-recap"></div>
       </section>
     </div>
   </main>

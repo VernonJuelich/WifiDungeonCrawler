@@ -11,6 +11,9 @@ const MONSTER_TABLE = [
 ];
 
 const DEFAULT_SSID_PATTERNS = /^(NETGEAR|Linksys|TP-Link|ASUS|Dlink|D-Link|Xfinity|Spectrum|ATT|Verizon|OPTUS|Telstra|TPG|iiNet|Belong)/i;
+const ITEM_ADJECTIVES_A = ['Suspiciously', 'Needlessly', 'Heroically', 'Moist', 'Vorpal', 'Discount', 'Glittering', 'Cursed'];
+const ITEM_ADJECTIVES_B = ['Moist', 'Aggressive', 'Tax-Deductible', 'Pointy', 'Sentient', 'Unlicensed', 'Apocalyptic', 'Velvet'];
+const ITEM_NOUNS = ['Crocs', 'Codpiece', 'Antenna', 'Bathrobe', 'Spork', 'Helmet', 'Socks', 'War Router'];
 
 const LOOT_TABLE = {
   common: [
@@ -18,41 +21,41 @@ const LOOT_TABLE = {
     { name: 'Chipped Copper Antenna',         type: 'weapon',  flavor: 'It\'s bent. It still works better than nothing.' },
     { name: 'Potion of Channel Clarity',      type: 'potion',  flavor: 'Reduces interference for 30 seconds. Tastes like metal.' },
     { name: 'Tattered Map Fragment',          type: 'misc',    flavor: 'Part of a larger map. Useless on its own. Probably.' },
-    { name: 'Goblin\'s Old WEP Key',         type: 'misc',    flavor: 'Already cracked. Worth nothing. You take it anyway.' },
+    { name: 'Goblin\'s Bent Channel Key',     type: 'misc',    flavor: 'Worth almost nothing. You take it anyway.' },
   ],
   uncommon: [
     { name: 'Silver Directional Antenna',     type: 'weapon',  flavor: '+3 to range. Forged in the fires of a Best Buy.' },
     { name: 'Amulet of Monitor Mode',         type: 'armor',   flavor: 'Passive: You can now see what others cannot.' },
-    { name: 'Ring of Packet Capture',         type: 'armor',   flavor: 'Every handshake whispers to you. It\'s unsettling.' },
-    { name: 'Elixir of Hash Speed',           type: 'potion',  flavor: '+500MH/s. Limited time. Side effects include fan noise.' },
+    { name: 'Ring of Signal Focus',           type: 'armor',   flavor: 'Nearby monsters suddenly feel much closer.' },
+    { name: 'Elixir of Battle Speed',         type: 'potion',  flavor: 'Limited time. Side effects include heroic overconfidence.' },
   ],
   rare: [
-    { name: 'Staff of Deauthentication',      type: 'weapon',  flavor: 'Legally and ethically problematic. Extremely effective.' },
+    { name: 'Staff of Channel Harmony',       type: 'weapon',  flavor: 'The airwaves briefly arrange themselves in your favour.' },
     { name: 'Cloak of the Hidden SSID',       type: 'armor',   flavor: 'You disappear from scan lists. The monsters are confused.' },
-    { name: 'Tome of rockyou.txt',            type: 'scroll',  flavor: '14 million words of pure uncut password wisdom.' },
-    { name: 'Gauntlets of PMKID Extraction',  type: 'armor',   flavor: 'Skip the handshake entirely. Rude. Efficient.' },
+    { name: 'Tome of a Million Encounters',   type: 'scroll',  flavor: 'Every page describes a battle you probably lost.' },
+    { name: 'Gauntlets of Proximity',         type: 'armor',   flavor: 'Signal becomes strength. Rude. Efficient.' },
   ],
   legendary: [
-    { name: 'The Pwnagotchi\'s Soul',         type: 'artifact', flavor: 'A tiny AI that learned to beg for handshakes. It is lonely.' },
+    { name: 'The Signal Sprite\'s Soul',       type: 'artifact', flavor: 'A tiny AI companion. It is lonely.' },
     { name: 'Alfa AWUS036ACH of Doom',        type: 'weapon',  flavor: 'Dual-band. High gain. The Lich has nightmares about this.' },
-    { name: 'Grimoire of WPA3 Tears',         type: 'artifact', flavor: 'Pages are blank. Nobody has ever cracked WPA3. Nobody.' },
+    { name: 'Grimoire of Lich Tears',         type: 'artifact', flavor: 'Pages are blank. The Lich refuses to discuss it.' },
     { name: 'Crown of the Dungeon Floor',     type: 'artifact', flavor: 'You are the danger. You are Carl.' },
   ],
 };
 
 const ACHIEVEMENTS = [
-  { code: 'first_blood',     name: 'First Blood',          desc: 'Captured your first handshake. The dungeon has taken notice.',          repeatable: false },
-  { code: 'goblin_slayer',   name: 'Goblin Slayer',        desc: 'Cracked your first WEP network. It was barely a challenge.',            repeatable: false },
-  { code: 'troll_hunter',    name: 'Troll Hunter',         desc: 'Cracked your first WPA network. Respectable.',                          repeatable: false },
-  { code: 'dragon_hunter',   name: 'Dragon Hunter',        desc: 'Cracked your first WPA2 network. The dungeon trembles.',                repeatable: false },
-  { code: 'lich_king',       name: 'Lich King',            desc: 'Cracked a WPA3 network. This should not have been possible. Are you okay?', repeatable: false },
+  { code: 'first_blood',     name: 'First Blood',          desc: 'Won your first simulated battle. The dungeon has taken notice.',        repeatable: false },
+  { code: 'goblin_slayer',   name: 'Goblin Slayer',        desc: 'Defeated your first Armoured Goblin.',                                  repeatable: false },
+  { code: 'troll_hunter',    name: 'Troll Hunter',         desc: 'Defeated your first Cave Troll.',                                       repeatable: false },
+  { code: 'dragon_hunter',   name: 'Dragon Hunter',        desc: 'Defeated your first Dungeon Wyvern.',                                   repeatable: false },
+  { code: 'lich_king',       name: 'Lich King',            desc: 'Defeated a Lich in simulated combat. The audience is stunned.',         repeatable: false },
   { code: 'hoarder',         name: 'Hoarder',              desc: 'Collected 10 items. Your inventory is getting heavy. Metaphorically.',  repeatable: false },
-  { code: 'floor_clearer',   name: 'Floor Clearer',        desc: 'Cracked 5 networks in a single session. Carl would approve.',           repeatable: false },
+  { code: 'floor_clearer',   name: 'Floor Clearer',        desc: 'Won 5 encounters in a single session. Carl would approve.',             repeatable: false },
   { code: 'century',         name: 'The Century',          desc: '100 kills. The alien audience is going insane. You are the show.',      repeatable: false },
   { code: 'ghost_detector',  name: 'Ghost Detector',       desc: 'Discovered a hidden SSID. Something was trying to hide from you.',      repeatable: true  },
   { code: 'naked_truth',     name: 'The Naked Truth',      desc: 'Found an open network. Who DOES that in this dungeon?',                 repeatable: true  },
-  { code: 'peasant_slayer',  name: 'Peasant Slayer',       desc: 'Cracked a default-named router. Password was probably "admin".',        repeatable: true  },
-  { code: 'speed_demon',     name: 'Speed Demon',          desc: 'Cracked a network in under 5 minutes. Efficiency is its own reward.',   repeatable: true  },
+  { code: 'peasant_slayer',  name: 'Peasant Slayer',       desc: 'Defeated a Common Peasant in simulated combat.',                         repeatable: true  },
+  { code: 'speed_demon',     name: 'Speed Demon',          desc: 'Won an encounter in under 5 minutes.',                                  repeatable: true  },
 ];
 
 function classifyMonster(network) {
@@ -95,16 +98,23 @@ function classifyMonster(network) {
   return { type: 'Unknown Horror', cr: 5, xp: 500 };
 }
 
-function rollLoot(monsterType, ssid) {
+function rollLoot(monsterType, ssid, forcedRarity = null) {
   const roll = Math.random() * 100;
-  let rarity;
-  if (roll < 60) rarity = 'common';
-  else if (roll < 85) rarity = 'uncommon';
-  else if (roll < 97) rarity = 'rare';
-  else rarity = 'legendary';
+  let rarity = forcedRarity;
+  if (!rarity) {
+    if (roll < 60) rarity = 'common';
+    else if (roll < 85) rarity = 'uncommon';
+    else if (roll < 97) rarity = 'rare';
+    else rarity = 'legendary';
+  }
 
   const pool = LOOT_TABLE[rarity];
   let item = pool[Math.floor(Math.random() * pool.length)];
+  const a = ITEM_ADJECTIVES_A[Math.floor(Math.random() * ITEM_ADJECTIVES_A.length)];
+  let b = ITEM_ADJECTIVES_B[Math.floor(Math.random() * ITEM_ADJECTIVES_B.length)];
+  if (a === b) b = 'Questionable';
+  const noun = ITEM_NOUNS[Math.floor(Math.random() * ITEM_NOUNS.length)];
+  item = { ...item, name: `${a} ${b} ${noun}` };
 
   // Named item based on SSID for rare+
   if ((rarity === 'rare' || rarity === 'legendary') && ssid) {
@@ -122,16 +132,30 @@ function addXP(amount) {
 
   xp += amount;
   let leveled = false;
+  let levelsGained = 0;
 
   while (xp >= xp_next) {
     xp -= xp_next;
     level += 1;
     xp_next = Math.floor(xp_next * 1.5);
     leveled = true;
+    levelsGained += 1;
   }
 
-  db.prepare('UPDATE crawler SET xp=?, xp_next=?, level=? WHERE id=1').run(xp, xp_next, level);
-  return { level, leveled, xp, xp_next };
+  db.prepare(`
+    UPDATE crawler SET xp=?,xp_next=?,level=?,
+      strength=strength+?,dexterity=dexterity+?,vitality=vitality+?,
+      intelligence=intelligence+?,max_health=max_health+?,max_stamina=max_stamina+?,
+      health=MIN(max_health+?,health+?),stamina=MIN(max_stamina+?,stamina+?)
+    WHERE id=1
+  `).run(
+    xp, xp_next, level,
+    levelsGained, levelsGained, levelsGained, levelsGained,
+    levelsGained * 5, levelsGained * 3,
+    levelsGained * 5, levelsGained * 5,
+    levelsGained * 3, levelsGained * 3
+  );
+  return { level, leveled, levelsGained, xp, xp_next };
 }
 
 function checkAchievements(triggerCode) {
